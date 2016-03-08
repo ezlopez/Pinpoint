@@ -1,5 +1,8 @@
-#include <string.h>
+#pragma pack(1)
+
 #include <stdint.h>
+#include <stddef.h>
+#include <string.h>
 #include <stdio.h>
 
 typedef enum {GGA, GSA, GSV, RMC, VTG, INVALID} nmea_type;
@@ -57,7 +60,7 @@ typedef struct GSV_Str {
    uint16_t  numSats;
    uint16_t  satID[12];
    uint16_t  elevation[12]; // In degrees
-   uint16_t azimuth[12];
+   uint16_t  azimuth[12];
    uint16_t  snr[12]; // 0 to 99, null when not tracked
 } GSV_Str;
 

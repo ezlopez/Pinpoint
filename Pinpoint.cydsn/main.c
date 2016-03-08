@@ -1,10 +1,8 @@
 #include <project.h>
-#include "nmea.h"
+#include <cyapicallbacks.h>
 
-// Interrupt prototype defines
-CY_ISR_PROTO(GPS_RX_INTER);
-CY_ISR_PROTO(XB_RX_INTER);
-CY_ISR_PROTO(PC_RX_INTER);
+#include "nmea.h"
+#include "users.h"
 
 // Enum for interrupt differentiation
 typedef enum {GPS, XB, PC} UART_INTER;
@@ -26,22 +24,27 @@ char  pcBuffer[100];
 uint8 xbBufLen = 0;
 char  xbBuffer[100];
 
+// User list, the first entry is this device
+User users;
+
 int main() {
     // Initializing GPS UART Module
     GPS_Start();
     GPS_TX_SetDriveMode(GPS_TX_DM_STRONG); // To reduce initial glitch output
-    GPS_RX_INT_StartEx(GPS_RX_INTER);
     
     // Initializing XBee UART Module
     GPS_Start();
     XB_TX_SetDriveMode(XB_TX_DM_STRONG); // To reduce initial glitch output
-    XB_RX_INT_StartEx(XB_RX_INTER);
     
     // Initializing GPS UART Module
     PC_Start();
     PC_TX_SetDriveMode(PC_TX_DM_STRONG); // To reduce initial glitch output
-    PC_RX_INT_StartEx(PC_RX_INTER);
 
+    // Clearing out the user list and naming ourself
+    cymemset(&users, 0, sizeof(User));
+    strncpy(users.name, "Default", strlen("Default"));
+    CyGetUniqueId((uint32*)&users.uniqueID); // Cheating a little bit
+    
     CyGlobalIntEnable;
 
     while(1) {
@@ -69,15 +72,14 @@ void buildBuffer(UART_INTER inter, char *buffer, uint8 *len, uint8 *ready) {
     }*/
 }
 
-CY_ISR(GPS_RX_INTER) {
+void GPS_RXISR_ExitCallback() {
     buildBuffer(GPS, gpsBuffer, &gpsBufLen, &gpsReady);
 }
 
-CY_ISR(XB_RX_INTER) {
+void PC_RXISR_ExitCallback() {
     buildBuffer(XB, xbBuffer, &xbBufLen, &xbReady);
 }
 
-CY_ISR(PC_RX_INTER) {
+void XB_RXISR_ExitCallback() {
     buildBuffer(PC, pcBuffer, &pcBufLen, &pcReady);
 }
-
