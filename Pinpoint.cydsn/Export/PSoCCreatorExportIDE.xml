@@ -6,8 +6,8 @@
     <Toolchain Name="ARM GCC Generic" Selected="True">
       <Tool Name="prebuild" Command="" Options="" />
       <Tool Name="assembler" Command="arm-none-eabi-as.exe" Options="-mcpu=cortex-m3 -mthumb -I. -IGenerated_Source\PSoC5 -alh=${OutputDir}/${CompileFile}.lst -g -W" />
-      <Tool Name="compiler" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -Wno-main -I. -IGenerated_Source\PSoC5 -Wa,-alh=${OutputDir}/${CompileFile}.lst -g -D DEBUG -Wall -ffunction-sections -Og -ffat-lto-objects" />
-      <Tool Name="linker" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -g -ffunction-sections -Og -L Generated_Source\PSoC5 -Wl,-Map,${OutputDir}/${ProjectShortName}.map -T Generated_Source\PSoC5\cm3gcc.ld -specs=nano.specs -Wl,--gc-sections" />
+      <Tool Name="compiler" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -Wno-main -I. -IGenerated_Source\PSoC5 -Wa,-alh=${OutputDir}/${CompileFile}.lst -g -D DEBUG -Wall -ffunction-sections -finline-functions -Og -ffat-lto-objects" />
+      <Tool Name="linker" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -g -ffunction-sections -finline-functions -Og -L Generated_Source\PSoC5 -Wl,-Map,${OutputDir}/${ProjectShortName}.map -T Generated_Source\PSoC5\cm3gcc.ld -specs=nano.specs -Wl,--gc-sections" />
       <Tool Name="postbuild" Command="" Options="" />
     </Toolchain>
     <Toolchain Name="ARM MDK Generic" Selected="False">
@@ -84,8 +84,6 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\core_cmInstr.h</File>
           <File BuildType="BUILD" Toolchain="ARM IAR Generic">.\Generated_Source\PSoC5\CyBootAsmIar.s</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\project.h</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\GPS_RX_INT.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\GPS_RX_INT.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\GPS.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\GPS.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\GPS_PM.c</File>
@@ -98,15 +96,11 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_PM.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_INT.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_BOOT.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_RX_INT.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_RX_INT.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_PM.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_INT.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_BOOT.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_RX_INT.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_RX_INT.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_IntClock.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_IntClock.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_IntClock.c</File>
@@ -120,6 +114,14 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_TX_aliases.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_TX.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_TX.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\Pin_1_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\Pin_1.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\Pin_1.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\Clock_1.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\Clock_1.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\CR.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\CR.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\CR_PM.c</File>
         </Files>
       </Folder>
       <Folder BuildType="STRICT" Path="C:\Users\Leiuqeze\Desktop\GitHub\Pinpoint\Pinpoint.cydsn\Export\ARM_GCC_Generic">

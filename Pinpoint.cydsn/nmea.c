@@ -19,19 +19,19 @@ nmea_type parseNMEA(char *sentence, void *strStruct) {
 
    if (!strncmp(sentence, "$GPGGA", 6)) {
       type = GGA;
-      extract(type, p, "%lf", GGA_Str, strStruct, utc);
-      extract(type, p, "%lf", GGA_Str, strStruct, lat);
+      extract(type, p, "%6.5lf", GGA_Str, strStruct, utc);
+      extract(type, p, "%4.4lf", GGA_Str, strStruct, lat);
       extract(type, p, "%c",  GGA_Str, strStruct, latDir);
-      extract(type, p, "%lf", GGA_Str, strStruct, lon);
+      extract(type, p, "%5.4lf", GGA_Str, strStruct, lon);
       extract(type, p, "%c",  GGA_Str, strStruct, lonDir);
       extract(type, p, "%hu", GGA_Str, strStruct, fix);
       extract(type, p, "%hu", GGA_Str, strStruct, numSats);
-      extract(type, p, "%f",  GGA_Str, strStruct, hdop);
-      extract(type, p, "%lf", GGA_Str, strStruct, alt);
+      extract(type, p, "%3.3f",  GGA_Str, strStruct, hdop);
+      extract(type, p, "%6.5lf", GGA_Str, strStruct, alt);
       extract(type, p, "%c",  GGA_Str, strStruct, altUnits);
-      extract(type, p, "%f",  GGA_Str, strStruct, geoidSep);
+      extract(type, p, "%3.3f",  GGA_Str, strStruct, geoidSep);
       extract(type, p, "%c",  GGA_Str, strStruct, geoidSepUnits);
-      extract(type, p, "%f",  GGA_Str, strStruct, diffCorrAge);
+      extract(type, p, "%3.3f",  GGA_Str, strStruct, diffCorrAge);
    }
    else if (!strncmp(sentence, "$GPGSA", 6)) {
       type = GSA;
@@ -39,9 +39,9 @@ nmea_type parseNMEA(char *sentence, void *strStruct) {
       extract(type, p, "%hu", GSA_Str, strStruct, mode2);
       for (i = 0; i < 12; i++)
          extract(type, p, "%hu", GSA_Str, strStruct, satsUsed[i]);
-      extract(type, p, "%f",  GSA_Str, strStruct, pdop);
-      extract(type, p, "%f",  GSA_Str, strStruct, hdop);
-      extract(type, p, "%f",  GSA_Str, strStruct, vdop);
+      extract(type, p, "%3.3f",  GSA_Str, strStruct, pdop);
+      extract(type, p, "%3.3f",  GSA_Str, strStruct, hdop);
+      extract(type, p, "%3.3f",  GSA_Str, strStruct, vdop);
    }
    else if (!strncmp(sentence, "$GPGSV", 6)) {
       type = GSV;
@@ -76,16 +76,16 @@ nmea_type parseNMEA(char *sentence, void *strStruct) {
    }
    else if (!strncmp(sentence, "$GPRMC", 6)) {
       type = RMC;
-      extract(type, p, "%lf", RMC_Str, strStruct, utc);
+      extract(type, p, "%6.3lf", RMC_Str, strStruct, utc);
       extract(type, p, "%c",  RMC_Str, strStruct, status);
-      extract(type, p, "%lf", RMC_Str, strStruct, lat);
+      extract(type, p, "%4.4f", RMC_Str, strStruct, lat);
       extract(type, p, "%c",  RMC_Str, strStruct, latDir);
-      extract(type, p, "%lf", RMC_Str, strStruct, lon);
+      extract(type, p, "%5.4lf", RMC_Str, strStruct, lon);
       extract(type, p, "%c",  RMC_Str, strStruct, lonDir);
-      extract(type, p, "%f",  RMC_Str, strStruct, groundSpeed);
-      extract(type, p, "%f",  RMC_Str, strStruct, groundCourse);
-      extract(type, p, "%hu", RMC_Str, strStruct, date);
-      extract(type, p, "%f",  RMC_Str, strStruct, magVar);
+      extract(type, p, "%3.3f",  RMC_Str, strStruct, groundSpeed);
+      extract(type, p, "%3.3f",  RMC_Str, strStruct, groundCourse);
+      extract(type, p, "%6u", RMC_Str, strStruct, date);
+      extract(type, p, "%3.3f",  RMC_Str, strStruct, magVar);
       extract(type, p, "%c",  RMC_Str, strStruct, magVarDir);
       if (type != INVALID) {
          ((RMC_Str *)strStruct)->mode = 0;
@@ -95,13 +95,13 @@ nmea_type parseNMEA(char *sentence, void *strStruct) {
    }
    else if (!strncmp(sentence, "$GPVTG", 6)) {
       type = VTG;
-      extract(type, p, "%f", VTG_Str, strStruct, course[0]);
+      extract(type, p, "%3.3f", VTG_Str, strStruct, course[0]);
       extract(type, p, "%c", VTG_Str, strStruct, reference[0]);
-      extract(type, p, "%f", VTG_Str, strStruct, course[1]);
+      extract(type, p, "%3.3f", VTG_Str, strStruct, course[1]);
       extract(type, p, "%c", VTG_Str, strStruct, reference[1]);
-      extract(type, p, "%f", VTG_Str, strStruct, speed[0]);
+      extract(type, p, "%3.3f", VTG_Str, strStruct, speed[0]);
       extract(type, p, "%c", VTG_Str, strStruct, speedUnits[0]);
-      extract(type, p, "%f", VTG_Str, strStruct, speed[1]);
+      extract(type, p, "%3.3f", VTG_Str, strStruct, speed[1]);
       extract(type, p, "%c", VTG_Str, strStruct, speedUnits[1]);
       if (type != INVALID) {
          ((VTG_Str *)strStruct)->mode = 0;
@@ -121,7 +121,7 @@ nmea_type parseNMEA(char *sentence, void *strStruct) {
 */
 int validateChecksum(char *sentence) {
    char *temp;
-   unsigned int checksum, calculated = 0;
+   uint16_t checksum, calculated = 0;
    int i;
 
    // Checking for the two defining characteristics of a NMEA string
@@ -129,13 +129,13 @@ int validateChecksum(char *sentence) {
       return 0;
 
    // Checking for a valid checksum
-   if (!sscanf(temp, "*%02x", &checksum))
+   if (!sscanf(temp, "*%02hx", &checksum))
       return 0;
 
    // Calculating the checksum from '$' to '*' (non-inclusive)
    for (i = 1; i < temp - sentence; i++)
       calculated ^= sentence[i];
-
+    
    return calculated == checksum;
 }
 

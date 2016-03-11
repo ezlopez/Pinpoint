@@ -73,7 +73,7 @@ typedef struct RMC_Str {
    char    lonDir; // E/W
    float   groundSpeed; // In knots
    float   groundCourse; // In degrees
-   uint16_t date;
+   uint32_t date;
    float   magVar; // Degrees
    char    magVarDir; // E/W
    char    mode; // A = autonomous, D = differential, E = estimated
