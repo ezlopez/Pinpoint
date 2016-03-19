@@ -12,7 +12,7 @@
 nmea_type parseNMEA(char *sentence, void *strStruct) {
    nmea_type type;
    char *p = sentence + 7;
-   int i, gsvMsgNum, numSats, satNum;
+   int i, gsvMsgNum, satNum, maxSatNum, numSats;
 
    if (!validateChecksum(sentence))
       return INVALID;
@@ -55,10 +55,8 @@ nmea_type parseNMEA(char *sentence, void *strStruct) {
       }
       extract(type, p, "%hu", GSV_Str, strStruct, numSats);
       satNum = gsvMsgNum * 4;
-      numSats = ((GSV_Str *)strStruct)->numSats - satNum;
-      if (numSats > 4)
-         numSats = 4;
-      while (numSats--) {
+      maxSatNum = numSats > satNum + 3 ? satNum + 3 : numSats;
+      while (satNum <= maxSatNum) {
          extract(type, p, "%hu", GSV_Str, strStruct, satID[satNum]);
          extract(type, p, "%hu", GSV_Str, strStruct, elevation[satNum]);
          extract(type, p, "%hu", GSV_Str, strStruct, azimuth[satNum]);

@@ -38,7 +38,7 @@ char send[100];
     GPS_TX_SetDriveMode(GPS_TX_DM_STRONG); // To reduce initial glitch output
     
     // Initializing XBee UART Module
-    GPS_Start();
+    XB_Start();
     XB_TX_SetDriveMode(XB_TX_DM_STRONG); // To reduce initial glitch output
     
     // Initializing GPS UART Module
@@ -54,17 +54,20 @@ char send[100];
 
     while(1) {
         if (pcReady) {
-PC_PutString("Ack pc\n");
+            PC_PutString("Ack pc\n");
             pcReady = 0;
         }
         if (gpsReady) {
-PC_PutString(gpsString);
-sprintf(send, "GPS String: %d\r\n", parseNMEA(gpsString, gpsInfo));
-PC_PutString(send);
+            PC_PutString(gpsString);
+            sprintf(send, "GPS String: %d\r\n", parseNMEA(gpsString, gpsInfo));
+            PC_PutString(send);
+            XB_PutString(send);
             gpsReady = 0;
         }
         if (xbReady) {
-PC_PutArray((uint8*)updateUser, sizeof(User));
+            PC_PutString("Received XB packet: ");
+            PC_PutString((char*)&xbUpdate);
+            PC_PutString("\r\n");
             xbReady = 0;
         }
     }
@@ -96,7 +99,7 @@ void PC_RXISR_ExitCallback() {
     // Will break for more than one string at a time ********************
     while(PC_GetRxBufferSize()) {
         if ((gpsBuffer[gpsBufLen++] = PC_GetChar()) == '\n') { // End of packet
-            gpsBuffer[gpsBufLen] = '\0';
+            gpsBuffer[gpsBufLen] = 0;
             gpsReady = 1;
             strcpy(gpsString, gpsBuffer);
             gpsBufLen = 0;
@@ -117,7 +120,7 @@ void XB_RXISR_ExitCallback() {
     
     xbBuffer[xbBufLen] = 0;
     xbReady = 1;
-    strncpy((char*)&xbUpdate, xbBuffer, xbBufLen);
+    memcpy(&xbUpdate, xbBuffer, xbBufLen);
     xbBufLen = 0;
             
     CYGlobalIntEnable;
