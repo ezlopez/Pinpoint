@@ -1,12 +1,8 @@
-#include <project.h>
 #include <cyapicallbacks.h>
 #include <stdlib.h>
 
-#include "nmea.h"
+#include "main.h"
 #include "users.h"
-
-// Enum for interrupt differentiation
-typedef enum {GPS, XB, PC} UART_INTER;
 
 // GPS RX buffer variables
 uint8 gpsBufLen = 0;
@@ -25,8 +21,11 @@ char  xbBuffer[100];
 User  xbUpdate;
 uint8 xbReady = 0;
 
-// User list, the first entry is this device
-User users;
+// List of the users we have seen on the network
+User *users = NULL;
+
+// Our own information
+Self me;
 
 int main() {
 char send[100];
@@ -34,6 +33,7 @@ char send[100];
     uint8 *gpsInfo = malloc(sizeofLargest());
     
     // Initializing GPS UART Module
+    GPS_CLK_Start();
     GPS_Start();
     GPS_TX_SetDriveMode(GPS_TX_DM_STRONG); // To reduce initial glitch output
     
@@ -45,13 +45,15 @@ char send[100];
     PC_Start();
     PC_TX_SetDriveMode(PC_TX_DM_STRONG); // To reduce initial glitch output
 
-    // Clearing out the user list and naming ourself
-    cymemset(&users, 0, sizeof(User));
-    strncpy(users.name, "Default", strlen("Default"));
-    CyGetUniqueId((uint32*)&users.uniqueID); // Cheating a little bit
+    // Setting up our own user data
+    memset(&me, 0, sizeof(me));
+    strncpy(me.name, "Alfred", 7); // Probably shouldn't hard-code***
+    CyGetUniqueId(&me.id);
     
     CyGlobalIntEnable;
-
+    
+    GPS_FurtherInit();
+    
     while(1) {
         if (pcReady) {
             PC_PutString("Ack pc\n");
@@ -124,4 +126,30 @@ void XB_RXISR_ExitCallback() {
     xbBufLen = 0;
             
     CYGlobalIntEnable;
+}
+
+/* Additional GPS setup:
+ *    Temporarily kill all sentence output & clear buffer
+ *    Set baudrate to 115200 (divider = 26 for 24 MHz clock)
+ *    Set update rate to once per second
+ *    Set NMEA output to be only RMC and GSA at every two seconds
+ */
+void GPS_FurtherInit() {
+    // Kill sentence output
+    GPS_PutString("$PMTK314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n");
+    gpsReady = 0; while (!gpsReady); // Wait for the acknowledgement
+    
+    // Update the baud rate on the GPS chip and GPS UART module
+    GPS_PutString("$PMTK251,115200*1F\r\n");
+    GPS_CLK_SetDividerValue(26);
+    gpsReady = 0; while (!gpsReady);
+    
+    // Set GPS chip fix rate to 1 Hz
+    GPS_PutString("$PMTK220,1000*1F\r\n");
+    gpsReady = 0; while (!gpsReady);
+    
+    // Set GPS chip output to 0.5 Hz for RMC and GSA
+    GPS_PutString("$PMTK314,0,2,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n");
+    gpsReady = 0; while (!gpsReady);
+    gpsReady = 0;
 }

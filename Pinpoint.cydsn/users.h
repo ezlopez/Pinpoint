@@ -10,13 +10,15 @@ typedef struct Position {
 
 typedef struct User {
     uint64      uniqueID;
-    char        name[15];
+    char        name[20];
     double      utc;
     Position    pos;
-    Position    dest;
     float       pdop;
+    /* To be implemented later
+    Position    dest;
     double      alt;
     char        altUnits;
+    */
     float       groundSpeed; // In knots
     float       groundCourse; // In degrees
     struct User *next;
