@@ -76,7 +76,7 @@ nmea_type parseNMEA(char *sentence, void *strStruct) {
       type = RMC;
       extract(type, p, "%6.3lf", RMC_Str, strStruct, utc);
       extract(type, p, "%c",  RMC_Str, strStruct, status);
-      extract(type, p, "%4.4f", RMC_Str, strStruct, lat);
+      extract(type, p, "%4.4lf", RMC_Str, strStruct, lat);
       extract(type, p, "%c",  RMC_Str, strStruct, latDir);
       extract(type, p, "%5.4lf", RMC_Str, strStruct, lon);
       extract(type, p, "%c",  RMC_Str, strStruct, lonDir);
@@ -135,19 +135,4 @@ int validateChecksum(char *sentence) {
       calculated ^= sentence[i];
     
    return calculated == checksum;
-}
-
-/* 
-   Returns the size of the largest NMEA sentence struct as returned by
-   the sizeof operator.
-*/
-size_t sizeofLargest() {
-   size_t max = sizeof(struct GGA_Str);
-
-   max = sizeof(struct GSA_Str) > max ? sizeof(struct GSA_Str) : max;
-   max = sizeof(struct GSV_Str) > max ? sizeof(struct GSV_Str) : max;
-   max = sizeof(struct RMC_Str) > max ? sizeof(struct RMC_Str) : max;
-   max = sizeof(struct VTG_Str) > max ? sizeof(struct VTG_Str) : max;
-
-   return max;
 }

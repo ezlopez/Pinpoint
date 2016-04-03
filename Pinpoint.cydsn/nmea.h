@@ -88,5 +88,4 @@ typedef struct VTG_Str {
 } VTG_Str;
 
 nmea_type parseNMEA(char *sentence, void *strStruct);
-size_t sizeofLargest();
 int validateChecksum(char *sentence);
