@@ -10,16 +10,17 @@ char  gpsString[500];
 uint8 gpsReady = 0;
 
 // PC RX buffer variables
-uint8 pcBufLen = 0;
+uint32 pcBufLen = 0;
 char  pcBuffer[100];
 uint8 pcReady = 0;
 
 // XB RX buffer variables
 CY_ISR_PROTO(BRDCST_LOC);
+CY_ISR_PROTO(XBEE_RCV);
 uint8 broadcastReady = 0;
-uint8 xbBufLen = 0;
-char  xbBuffer[100];
-User  xbUpdate;
+uint16 xbBufLen = 0;
+uint8  xbBuffer[200];
+uint8  xbUpdate[200];
 uint8 xbReady = 0;
 
 // List of the users we have seen on the network
@@ -28,8 +29,11 @@ User *users = NULL;
 // Our own information
 Self me;
 
+void rxBuffering();
+
 int main() {
-char send[100];    
+char test[200];
+XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
     // Initializing GPS UART Module
     GPS_CLK_Start();
     GPS_Start();
@@ -40,6 +44,7 @@ char send[100];
     XB_TX_SetDriveMode(XB_TX_DM_STRONG); // To reduce initial glitch output
     Broadcast_Timer_Start();
     XB_Location_Broadcast_StartEx(BRDCST_LOC);
+    XB_RX_ISR_StartEx(XBEE_RCV);
     
     // Initializing GPS UART Module
     PC_Start();
@@ -56,6 +61,13 @@ char send[100];
     broadcastReady = 0;
     
     while(1) {
+        /*if (GPS_GetRxBufferSize())
+            GPS_RXISR_ExitCallback();
+        if (PC_GetRxBufferSize())
+            PC_RXISR_ExitCallback();
+        if (XB_GetRxBufferSize())
+            XB_RXISR_ExitCallback();*/
+        
         if (pcReady) {
             PC_PutString("Ack pc\n");
             pcReady = 0;
@@ -66,9 +78,11 @@ char send[100];
             gpsReady = 0;
         }
         if (xbReady) {
-            PC_PutString("Received XB packet: ");
-            PC_PutString((char*)&xbUpdate);
-            PC_PutString("\r\n");
+            PC_PutString("XB Update:\r\n");
+            //CyGlobalIntDisable;
+            sprintf(test, "\t%s (%ld)\r\n\tType %d (%ld bytes)\r\n\tUTC %6.3f\r\n", hdr->name, hdr->id, hdr->type, hdr->dataLen, hdr->utc);
+            PC_PutString(test);
+            //CyGlobalIntEnable;
             xbReady = 0;
         }
         if (broadcastReady) {
@@ -93,14 +107,13 @@ void GPS_FurtherInit() {
     CyDelay(500); // Delay half a second to collect acknowledgement
     GPS_ClearRxBuffer();
     
-    /* Not working for some reason ***
-    // Update the baud rate on the GPS chip and GPS UART module
+    
+    /*// Update the baud rate on the GPS chip and GPS UART module
     GPS_PutString("$PMTK251,115200*1F\r\n");
     GPS_CLK_SetDividerValue(26);
     PC_PutString("Changing baud rate\r\n");
     CyDelay(500); // Delay half a second to collect acknowledgement
-    GPS_ClearRxBuffer();
-    */
+    GPS_ClearRxBuffer();*/
     
     // Set GPS chip fix rate to 1 Hz
     GPS_PutString("$PMTK220,1000*1F\r\n");
@@ -122,23 +135,23 @@ void logGPSdata() {
     CyGlobalIntDisable;
     switch(parseNMEA(gpsString, gpsInfo)) {
         case GGA:
-            memcpy(&me.gga, &gpsInfo, sizeof(GGA_Str));
+            memcpy(&me.gga, gpsInfo, sizeof(GGA_Str));
             break;
         case GSA:
-            memcpy(&me.gsa, &gpsInfo, sizeof(GSA_Str));
+            memcpy(&me.gsa, gpsInfo, sizeof(GSA_Str));
             break;
         case VTG:
-            memcpy(&me.vtg, &gpsInfo, sizeof(VTG_Str));
+            memcpy(&me.vtg, gpsInfo, sizeof(VTG_Str));
             break;
         case RMC:
-            memcpy(&me.rmc, &gpsInfo, sizeof(RMC_Str));
+            memcpy(&me.rmc, gpsInfo, sizeof(RMC_Str));
             break;
         case GSV:
-            memcpy(&me.gsv, &gpsInfo, sizeof(GSV_Str));
+            memcpy(&me.gsv, gpsInfo, sizeof(GSV_Str));
             break;
         case INVALID:
         default:
-            PC_PutString("Invalid NMEA string.\r\n");
+            //PC_PutString("Invalid NMEA string.\r\n");
             break;
     }
     CyGlobalIntEnable;
@@ -151,29 +164,26 @@ CY_ISR(BRDCST_LOC) {
 void broadcastPosition() {
     XBEE_Header hdr;
     XBEE_POSITION_MESSAGE pos;
-    char message[75]; // Rough estimate
-char test[300];
+    char message[150]; // Rough estimate
     
     Broadcast_Timer_ReadStatusRegister(); // Needed to clear interrupt output
     
-    CyGlobalIntDisable;
     // Filling the header info
-    memcpy(&hdr, &me, 24); // Copying name and id
+    memset(hdr.name, 0, 20);
+    strcpy(hdr.name, "Alfred");//me.name);
+    hdr.id = me.id;
     hdr.utc = me.rmc.utc;
     hdr.type = POSITION;
-    hdr.dataLen = sizeof(XBEE_POSITION_MESSAGE);
+    hdr.dataLen = 0;//sizeof(XBEE_POSITION_MESSAGE);
     
     // Filling the position info
-    memcpy(&pos.pos, &me.rmc.lat, sizeof(Position)); // Only works because it's packed
-    CyGlobalIntEnable;
+    //memcpy(&pos.pos, &me.rmc.lat, sizeof(Position)); // Only works because it's packed
     
     // Concatenating the header and payload
-    memcpy(message, &hdr, sizeof(hdr));
-    memcpy(message + sizeof(hdr), &pos, sizeof(pos));
+    //memcpy(message, &hdr, sizeof(hdr));
+    //memcpy(message + sizeof(hdr), &pos, sizeof(pos));
     
-    sprintf(test, "\tName: %s\r\n\tID: %lu\r\n\tUTC: %6.3lf\r\n\tType: %d\r\n\tData Len: %lu\r\n\t\tLat: %4.4lf %c\r\n\t\tLon: %5.4lf %c\r\n\t\tPDOP: %3.3f\r\n", hdr.name, hdr.id, hdr.utc, hdr.type, hdr.dataLen, pos.pos.lat, pos.pos.latDir, pos.pos.lon, pos.pos.lonDir, pos.pdop);
-    PC_PutString("Location broadcast:\r\n");
-    PC_PutString(test);
+    XB_PutArray((uint8*)&hdr, sizeof(hdr));// + sizeof(pos));
 }
 
 void GPS_RXISR_ExitCallback() {
@@ -201,7 +211,7 @@ void PC_RXISR_ExitCallback() {
     while(PC_GetRxBufferSize()) {
         if ((gpsBuffer[gpsBufLen++] = PC_GetChar()) == '\n') { // End of packet
             gpsBuffer[gpsBufLen] = 0;
-            gpsReady = 1;
+            //gpsReady = 1;
             strcpy(gpsString, gpsBuffer);
             gpsBufLen = 0;
         }
@@ -209,19 +219,37 @@ void PC_RXISR_ExitCallback() {
     CyGlobalIntEnable;
 }
 
-void XB_RXISR_ExitCallback() {
-    CyGlobalIntDisable;
-    // Keep adding chars to the buffer until you
-    // exhaust the internal buffer
-    // Will break for more than one user at a time ********************
-    while(XB_GetRxBufferSize()) {
-        xbBuffer[xbBufLen++] = XB_GetChar();
+CY_ISR(XBEE_RCV){
+    XBEE_Header *hdr = (XBEE_Header*) xbBuffer;
+
+    CyGlobalIntDisable;    
+
+    while(xbBufLen < sizeof(XBEE_Header)) {
+        if (XB_GetRxBufferSize()) {
+            xbBuffer[xbBufLen++] = XB_ReadRxData();
+            PC_PutChar(xbBuffer[xbBufLen - 1]);
+        }
+        else {
+            CyGlobalIntEnable;
+            return;
+        }
     }
+   /* 
+    while(xbBufLen < sizeof(XBEE_Header) + hdr->dataLen) {
+        if (XB_GetRxBufferSize()) {
+            xbBuffer[xbBufLen++] = XB_ReadRxData();
+        }
+        else {
+            CyGlobalIntEnable;
+            return;
+        }
+    }
+*/
     
-    xbBuffer[xbBufLen] = 0;
+    // Transfering data to the second buffer
     xbReady = 1;
-    memcpy(&xbUpdate, xbBuffer, xbBufLen);
+    memcpy(xbUpdate, xbBuffer, xbBufLen);
     xbBufLen = 0;
-            
+
     CyGlobalIntEnable;
 }

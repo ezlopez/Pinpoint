@@ -1,0 +1,16 @@
+Last Modified Date & Time: 04/10/2016 02:00:54
+
+Pinpoint: TopDesign.cysch
+	Pin_1 [v2.20] to [v2.20]
+	GPS_RX [v2.20] to [v2.20]
+	GPS_TX [v2.20] to [v2.20]
+	XB_RX [v2.20] to [v2.20]
+	XB_TX [v2.20] to [v2.20]
+	PC_RX [v2.20] to [v2.20]
+	PC_TX [v2.20] to [v2.20]
+
+Pinpoint: Pinpoint.cydwr
+	cy_boot [v5.20] to [v5.30]
+	LIN_Dynamic [v3.20] to [v3.30]
+
+

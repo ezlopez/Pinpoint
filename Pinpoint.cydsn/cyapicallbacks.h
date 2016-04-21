@@ -3,6 +3,5 @@
     
 #define GPS_RXISR_EXIT_CALLBACK
 #define PC_RXISR_EXIT_CALLBACK
-#define XB_RXISR_EXIT_CALLBACK
     
 #endif

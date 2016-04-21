@@ -1,5 +1,6 @@
 #pragma pack(1)
 
+#include <cytypes.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
@@ -28,15 +29,15 @@ typedef enum {GGA, GSA, GSV, RMC, VTG, INVALID} nmea_type;
 }
 
 typedef struct GGA_Str {
-   double utc;
-   double lat;
+   float64 utc;
+   float64 lat;
    char   latDir; // N/S
-   double lon;
+   float64 lon;
    char   lonDir; // E/W
    uint16_t fix; // 1 = No fix, 2 = GPS fix, 3 = DGPS fix
    uint16_t numSats;
    float  hdop;
-   double alt;
+   float64 alt;
    char   altUnits;
    float  geoidSep;
    char   geoidSepUnits;
@@ -65,11 +66,11 @@ typedef struct GSV_Str {
 } GSV_Str;
 
 typedef struct RMC_Str {
-   double  utc;
+   float64  utc;
    char    status; // A = valid, V = not valid
-   double  lat;
+   float64  lat;
    char    latDir; // N/S
-   double  lon;
+   float64  lon;
    char    lonDir; // E/W
    float   groundSpeed; // In knots
    float   groundCourse; // In degrees

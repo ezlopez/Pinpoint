@@ -2,21 +2,21 @@
 #include <cytypes.h>
 
 typedef struct Position {
-    double lat;
+    float64 lat;
     char   latDir; // N/S
-    double lon;
+    float64 lon;
     char   lonDir; // E/W
 } Position;
 
 typedef struct User {
     uint64      uniqueID;
     char        name[20];
-    double      utc;
+    float64      utc;
     Position    pos;
     float       pdop;
     /* To be implemented later
     Position    dest;
-    double      alt;
+    float64      alt;
     char        altUnits;
     */
     float       groundSpeed; // In knots
