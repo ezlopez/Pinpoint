@@ -2,6 +2,8 @@
 #include <stdlib.h>
 
 #include "main.h"
+#include "Adafruit_GFX.h"
+#include "Adafruit_RA8875.h"
 
 // GPS RX buffer variables
 uint8 gpsBufLen = 0;
