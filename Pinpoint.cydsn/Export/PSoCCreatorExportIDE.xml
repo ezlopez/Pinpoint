@@ -40,11 +40,13 @@
           <File BuildType="BUILD" Toolchain="">.\nmea.c</File>
           <File BuildType="BUILD" Toolchain="">.\users.c</File>
           <File BuildType="BUILD" Toolchain="">.\Adafruit_RA8875.c</File>
+          <File BuildType="BUILD" Toolchain="">.\glcdfont.c</File>
           <File BuildType="BUILD" Toolchain="">.\cyapicallbacks.h</File>
           <File BuildType="BUILD" Toolchain="">.\nmea.h</File>
           <File BuildType="BUILD" Toolchain="">.\users.h</File>
           <File BuildType="BUILD" Toolchain="">.\main.h</File>
           <File BuildType="BUILD" Toolchain="">.\Adafruit_RA8875.h</File>
+          <File BuildType="BUILD" Toolchain="">.\gfxfont.h</File>
         </Files>
       </Folder>
       <Folder BuildType="STRICT" Path="C:\Users\Leiuqeze\Desktop\Senior Project\Pinpoint\Pinpoint.cydsn\Generated_Source\PSoC5">
@@ -92,8 +94,6 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_TX_aliases.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_TX.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_TX.h</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\Clock_1.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\Clock_1.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_IntClock.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_IntClock.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\PC_IntClock.c</File>
@@ -135,6 +135,36 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cycodeshareexport.ld</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_RX_ISR.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_RX_ISR.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_PM.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_INT.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_PVT.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_MISO_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_MISO.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_MISO.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_MOSI_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_MOSI.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_MOSI.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_CLK_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_CLK.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_CLK.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_CS_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_CS.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_CS.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_INTR_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_INTR.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_INTR.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_RST_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_RST.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_RST.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_ISR.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_ISR.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_RST_Control.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_RST_Control.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_RST_Control_PM.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_CLOCK.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_CLOCK.h</File>
         </Files>
       </Folder>
       <Folder BuildType="STRICT" Path="C:\Users\Leiuqeze\Desktop\Senior Project\Pinpoint\Pinpoint.cydsn\Export\ARM_GCC_Generic">

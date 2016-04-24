@@ -31,6 +31,7 @@ typedef struct XBEE_POSITION_MESSAGE {
 } XBEE_POSITION_MESSAGE;
 
 void GPS_FurtherInit();
+void TFT_FurtherInit();
 void logGPSdata();
 void broadcastPosition();
 void GPS_RXISR_ExitCallback();

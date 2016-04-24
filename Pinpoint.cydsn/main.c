@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "main.h"
-#include "Adafruit_GFX.h"
 #include "Adafruit_RA8875.h"
 
 // GPS RX buffer variables
@@ -24,6 +23,9 @@ uint16 xbBufLen = 0;
 uint8  xbBuffer[200];
 uint8  xbUpdate[200];
 uint8 xbReady = 0;
+
+// TFT display variables
+CY_ISR_PROTO(TFT_INTER);
 
 // List of the users we have seen on the network
 User *users = NULL;
@@ -48,9 +50,14 @@ XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
     XB_Location_Broadcast_StartEx(BRDCST_LOC);
     XB_RX_ISR_StartEx(XBEE_RCV);
     
-    // Initializing GPS UART Module
+    // Initializing PC UART Module
     PC_Start();
     PC_TX_SetDriveMode(PC_TX_DM_STRONG); // To reduce initial glitch output
+    
+    // Initializing TFT display
+    TFT_Start();
+    TFT_ISR_StartEx(TFT_INTER);
+    TFT_CLOCK_Start();
 
     // Setting up our own user data
     memset(&me, 0, sizeof(me));
@@ -59,6 +66,7 @@ XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
     
     CyGlobalIntEnable;
     
+    TFT_FurtherInit();
     GPS_FurtherInit();
     broadcastReady = 0;
     
@@ -80,10 +88,10 @@ XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
             gpsReady = 0;
         }
         if (xbReady) {
-            PC_PutString("XB Update:\r\n");
+            //PC_PutString("XB Update:\r\n");
             //CyGlobalIntDisable;
-            sprintf(test, "\t%s (%ld)\r\n\tType %d (%ld bytes)\r\n\tUTC %6.3f\r\n", hdr->name, hdr->id, hdr->type, hdr->dataLen, hdr->utc);
-            PC_PutString(test);
+            //sprintf(test, "\t%s (%ld)\r\n\tType %d (%ld bytes)\r\n\tUTC %6.3f\r\n", hdr->name, hdr->id, hdr->type, hdr->dataLen, hdr->utc);
+            //PC_PutString(test);
             //CyGlobalIntEnable;
             xbReady = 0;
         }
@@ -129,6 +137,66 @@ void GPS_FurtherInit() {
     CyDelay(500); // Delay half a second to collect acknowledgement
     GPS_ClearRxBuffer();
     gpsReady = 0;
+}
+
+void TFT_FurtherInit() {
+    int i;
+    
+    if (!Adafruit_RA8875_begin()) {
+        PC_PutString("Failed to init TFT.\r\n");
+        return;
+    }
+    PC_PutString("TFT init succeeded.\r\n");
+    
+    Adafruit_RA8875_displayOn(1);
+    Adafruit_RA8875_GPIOX(1); // Enable TFT - display enable tied to GPIOX
+    Adafruit_RA8875_PWM1config(1, RA8875_PWM_CLK_DIV1024); // PWM output for backlight
+    Adafruit_RA8875_PWM1out(255);
+    
+    // ************************ Start playing with the screen *********************
+    // With hardware accelleration this is instant
+  Adafruit_RA8875_fillScreen(RA8875_WHITE);
+
+  // Play with PWM
+  for (i=255; i!=0; i-=5 ) {
+    Adafruit_RA8875_PWM1out(i); 
+    CyDelay(10);
+  }
+  for (i=0; i!=255; i+=5 ) {
+    Adafruit_RA8875_PWM1out(i); 
+    CyDelay(10);
+  }
+  Adafruit_RA8875_PWM1out(255); 
+  
+  Adafruit_RA8875_fillScreen(RA8875_RED);
+  CyDelay(500);
+  Adafruit_RA8875_fillScreen(RA8875_YELLOW);
+  CyDelay(500);
+  Adafruit_RA8875_fillScreen(RA8875_GREEN);
+  CyDelay(500);
+  Adafruit_RA8875_fillScreen(RA8875_CYAN);
+  CyDelay(500);
+  Adafruit_RA8875_fillScreen(RA8875_MAGENTA);
+  CyDelay(500);
+  Adafruit_RA8875_fillScreen(RA8875_BLACK);
+  
+  // Try some GFX acceleration!
+  Adafruit_RA8875_drawCircle(100, 100, 50, RA8875_BLACK);
+  Adafruit_RA8875_fillCircle(100, 100, 49, RA8875_GREEN);
+  
+  Adafruit_RA8875_fillRect(11, 11, 398, 198, RA8875_BLUE);
+  Adafruit_RA8875_drawRect(10, 10, 400, 200, RA8875_GREEN);
+  Adafruit_RA8875_fillRoundRect(200, 10, 200, 100, 10, RA8875_RED);
+  Adafruit_RA8875_drawPixel(10,10,RA8875_BLACK);
+  Adafruit_RA8875_drawPixel(11,11,RA8875_BLACK);
+  Adafruit_RA8875_drawLine(10, 10, 200, 100, RA8875_RED);
+  Adafruit_RA8875_drawTriangle(200, 15, 250, 100, 150, 125, RA8875_BLACK);
+  Adafruit_RA8875_fillTriangle(200, 16, 249, 99, 151, 124, RA8875_YELLOW);
+  Adafruit_RA8875_drawEllipse(300, 100, 100, 40, RA8875_BLACK);
+  Adafruit_RA8875_fillEllipse(300, 100, 98, 38, RA8875_GREEN);
+  // Argument 5 (curvePart) is a 2-bit value to control each corner (select 0, 1, 2, or 3)
+  Adafruit_RA8875_drawCurve(50, 100, 80, 40, 2, RA8875_BLACK);  
+  Adafruit_RA8875_fillCurve(50, 100, 78, 38, 2, RA8875_WHITE);
 }
 
 void logGPSdata() {
@@ -221,6 +289,10 @@ void PC_RXISR_ExitCallback() {
     CyGlobalIntEnable;
 }
 
+CY_ISR(TFT_INTER) {
+    PC_PutString("Got display interrupt\r\n");
+}
+
 CY_ISR(XBEE_RCV){
     XBEE_Header *hdr = (XBEE_Header*) xbBuffer;
 
@@ -229,7 +301,6 @@ CY_ISR(XBEE_RCV){
     while(xbBufLen < sizeof(XBEE_Header)) {
         if (XB_GetRxBufferSize()) {
             xbBuffer[xbBufLen++] = XB_ReadRxData();
-            PC_PutChar(xbBuffer[xbBufLen - 1]);
         }
         else {
             CyGlobalIntEnable;
