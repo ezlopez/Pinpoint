@@ -70,14 +70,7 @@ XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
     GPS_FurtherInit();
     broadcastReady = 0;
     
-    while(1) {
-        /*if (GPS_GetRxBufferSize())
-            GPS_RXISR_ExitCallback();
-        if (PC_GetRxBufferSize())
-            PC_RXISR_ExitCallback();
-        if (XB_GetRxBufferSize())
-            XB_RXISR_ExitCallback();*/
-        
+    while(1) {        
         if (pcReady) {
             PC_PutString("Ack pc\n");
             pcReady = 0;
@@ -116,7 +109,6 @@ void GPS_FurtherInit() {
     GPS_ClearRxBuffer();
     CyDelay(500); // Delay half a second to collect acknowledgement
     GPS_ClearRxBuffer();
-    
     
     /*// Update the baud rate on the GPS chip and GPS UART module
     GPS_PutString("$PMTK251,115200*1F\r\n");
@@ -162,10 +154,12 @@ void TFT_FurtherInit() {
     Adafruit_RA8875_PWM1out(i); 
     CyDelay(10);
   }
+
   for (i=0; i!=255; i+=5 ) {
     Adafruit_RA8875_PWM1out(i); 
     CyDelay(10);
   }
+
   Adafruit_RA8875_PWM1out(255); 
   
   Adafruit_RA8875_fillScreen(RA8875_RED);
@@ -197,6 +191,8 @@ void TFT_FurtherInit() {
   // Argument 5 (curvePart) is a 2-bit value to control each corner (select 0, 1, 2, or 3)
   Adafruit_RA8875_drawCurve(50, 100, 80, 40, 2, RA8875_BLACK);  
   Adafruit_RA8875_fillCurve(50, 100, 78, 38, 2, RA8875_WHITE);
+
+  PC_PutString("Finished TFT init\r\n");
 }
 
 void logGPSdata() {

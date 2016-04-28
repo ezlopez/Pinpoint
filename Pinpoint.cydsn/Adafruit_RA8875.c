@@ -94,24 +94,20 @@ uint8_t _textScale;
 */
 /**************************************************************************/
 int Adafruit_RA8875_begin() {
-uint8_t reg;
-char test[10];
     TFT_RST_Control_Write(0);
     CyDelay(100);
     TFT_RST_Control_Write(1);
     CyDelay(100);
   
     PC_PutString("Testing Reg\r\n");
-    while ((reg = Adafruit_RA8875_readReg(0)) != 0x75) {
-        #include <stdio.h>
-        sprintf(test, "%d\n", reg);
-        PC_PutString(test);
+    while (Adafruit_RA8875_readReg(0) != 0x75) {
+        PC_PutString("Failed readReg(0)\r\n");
         CyDelay(1000);
     }
     
     PC_PutString("Initializing Display\r\n");
     Adafruit_RA8875_initialize();
-    TFT_CLOCK_SetDividerValue(6);
+    TFT_CLOCK_SetDividerValue(3);
     
     return 1;
 }
@@ -374,6 +370,7 @@ int Adafruit_RA8875_waitPoll(uint8_t regname, uint8_t waitflag) {
         temp = Adafruit_RA8875_readReg(regname);
         if (!(temp & waitflag))
             return 1;
+        CyDelay(1);
     }
     return 0; // MEMEFIX: yeah i know, unreached! - add timeout?
 }
@@ -770,7 +767,6 @@ void Adafruit_RA8875_rectHelper(int16_t x, int16_t y, int16_t w, int16_t h, uint
         Adafruit_RA8875_writeData(0xB0);
     else
         Adafruit_RA8875_writeData(0x90);
-    
     /* Wait for the command to finish */
     Adafruit_RA8875_waitPoll(RA8875_DCR, RA8875_DCR_LINESQUTRI_STATUS);
 }
@@ -1082,6 +1078,7 @@ void Adafruit_RA8875_sleep(int sleep) {
 /**************************************************************************/
 void  Adafruit_RA8875_writeReg(uint8_t reg, uint8_t val) {
     Adafruit_RA8875_writeCommand(reg);
+    CyDelay(1);
     Adafruit_RA8875_writeData(val);
 }
 
@@ -1091,7 +1088,9 @@ void  Adafruit_RA8875_writeReg(uint8_t reg, uint8_t val) {
 */
 /**************************************************************************/
 uint8_t  Adafruit_RA8875_readReg(uint8_t reg) {
+    uint8_t dat;
     Adafruit_RA8875_writeCommand(reg);
+    CyDelay(1);
     return Adafruit_RA8875_readData();
 }
 
@@ -1101,8 +1100,11 @@ uint8_t  Adafruit_RA8875_readReg(uint8_t reg) {
 */
 /**************************************************************************/
 void  Adafruit_RA8875_writeData(uint8_t d) {
-    TFT_WriteTxData(RA8875_DATAWRITE);
-    TFT_WriteTxData(d);
+    uint8 data[2] = {RA8875_DATAWRITE, d};
+    TFT_PutArray(data, 2);
+    while (!(TFT_ReadTxStatus() & TFT_STS_SPI_DONE));
+    while (TFT_GetRxBufferSize())
+        TFT_ReadRxData();
 }
 
 /**************************************************************************/
@@ -1111,10 +1113,10 @@ void  Adafruit_RA8875_writeData(uint8_t d) {
 */
 /**************************************************************************/
 uint8_t  Adafruit_RA8875_readData(void) {
-    TFT_ClearFIFO();
-    TFT_WriteTxData(RA8875_DATAREAD);
-    TFT_WriteTxData(0);
-    while (TFT_GetRxBufferSize() != 1)
+    uint8 data[2] = {RA8875_DATAREAD, 0};
+    TFT_PutArray(data, 2);
+    while (!(TFT_ReadTxStatus() & TFT_STS_SPI_DONE));
+    while (TFT_GetRxBufferSize() > 1)
         TFT_ReadRxData();
     return TFT_ReadRxData();
 }
@@ -1125,8 +1127,11 @@ uint8_t  Adafruit_RA8875_readData(void) {
 */
 /**************************************************************************/
 void  Adafruit_RA8875_writeCommand(uint8_t d) {
-    TFT_WriteTxData(RA8875_CMDWRITE);
-    TFT_WriteTxData(d);
+    uint8 data[2] = {RA8875_CMDWRITE, d};
+    TFT_PutArray(data, 2);
+    while (!(TFT_ReadTxStatus() & TFT_STS_SPI_DONE));
+    while (TFT_GetRxBufferSize())
+        TFT_ReadRxData();
 }
 
 /**************************************************************************/
@@ -1135,10 +1140,10 @@ void  Adafruit_RA8875_writeCommand(uint8_t d) {
 */
 /**************************************************************************/
 uint8_t  Adafruit_RA8875_readStatus(void) {
-    TFT_ClearFIFO();
-    TFT_WriteTxData(RA8875_CMDREAD);
-    TFT_WriteTxData(0);
-    while (TFT_GetRxBufferSize() != 1)
+    uint8 data[2] = {RA8875_CMDREAD, 0};
+    TFT_PutArray(data, 2);
+    while (!(TFT_ReadTxStatus() & TFT_STS_SPI_DONE));
+    while (TFT_GetRxBufferSize() > 1)
         TFT_ReadRxData();
     return TFT_ReadRxData();
 }
