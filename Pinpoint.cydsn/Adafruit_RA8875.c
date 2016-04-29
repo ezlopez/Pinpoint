@@ -343,6 +343,20 @@ void Adafruit_RA8875_textWrite(const char* buffer, uint16_t len) {
     }
 }
 
+/*
+    Sets the canvas orientation. Mode = 0 is landscape. Mode = 1 is portrait.
+*/
+void Adafruit_RA8875_setOrientation(uint8 mode) {
+    if (mode == 0) {
+        Adafruit_RA8875_writeReg(0x22, 0x00); // set text to landscape mode (no rotation)
+        Adafruit_RA8875_writeReg(0x20, 0x00); // normal scan direction for Y (smallest to largest)
+    }
+    else if (mode == 1) {
+        Adafruit_RA8875_writeReg(0x22, 0x10); // set text to portrait mode (rotate 90 degrees)
+        Adafruit_RA8875_writeReg(0x20, 0x04); //reverse scan direction for Y (largest to smallest)
+    }
+}
+
 /************************* Graphics ***********************************/
 
 /**************************************************************************/

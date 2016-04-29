@@ -147,50 +147,32 @@ void TFT_FurtherInit() {
     
     // ************************ Start playing with the screen *********************
     // With hardware accelleration this is instant
-  Adafruit_RA8875_fillScreen(RA8875_WHITE);
-
-  // Play with PWM
-  for (i=255; i!=0; i-=5 ) {
-    Adafruit_RA8875_PWM1out(i); 
-    CyDelay(10);
-  }
-
-  for (i=0; i!=255; i+=5 ) {
-    Adafruit_RA8875_PWM1out(i); 
-    CyDelay(10);
-  }
-
-  Adafruit_RA8875_PWM1out(255); 
-  
-  Adafruit_RA8875_fillScreen(RA8875_RED);
-  CyDelay(500);
-  Adafruit_RA8875_fillScreen(RA8875_YELLOW);
-  CyDelay(500);
-  Adafruit_RA8875_fillScreen(RA8875_GREEN);
-  CyDelay(500);
-  Adafruit_RA8875_fillScreen(RA8875_CYAN);
-  CyDelay(500);
-  Adafruit_RA8875_fillScreen(RA8875_MAGENTA);
-  CyDelay(500);
   Adafruit_RA8875_fillScreen(RA8875_BLACK);
-  
-  // Try some GFX acceleration!
-  Adafruit_RA8875_drawCircle(100, 100, 50, RA8875_BLACK);
-  Adafruit_RA8875_fillCircle(100, 100, 49, RA8875_GREEN);
-  
-  Adafruit_RA8875_fillRect(11, 11, 398, 198, RA8875_BLUE);
-  Adafruit_RA8875_drawRect(10, 10, 400, 200, RA8875_GREEN);
-  Adafruit_RA8875_fillRoundRect(200, 10, 200, 100, 10, RA8875_RED);
-  Adafruit_RA8875_drawPixel(10,10,RA8875_BLACK);
-  Adafruit_RA8875_drawPixel(11,11,RA8875_BLACK);
-  Adafruit_RA8875_drawLine(10, 10, 200, 100, RA8875_RED);
-  Adafruit_RA8875_drawTriangle(200, 15, 250, 100, 150, 125, RA8875_BLACK);
-  Adafruit_RA8875_fillTriangle(200, 16, 249, 99, 151, 124, RA8875_YELLOW);
-  Adafruit_RA8875_drawEllipse(300, 100, 100, 40, RA8875_BLACK);
-  Adafruit_RA8875_fillEllipse(300, 100, 98, 38, RA8875_GREEN);
-  // Argument 5 (curvePart) is a 2-bit value to control each corner (select 0, 1, 2, or 3)
-  Adafruit_RA8875_drawCurve(50, 100, 80, 40, 2, RA8875_BLACK);  
-  Adafruit_RA8875_fillCurve(50, 100, 78, 38, 2, RA8875_WHITE);
+
+    /* Switch to text mode and print the header */  
+    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_setOrientation(1);
+    Adafruit_RA8875_textSetCursor(10, 120);
+    Adafruit_RA8875_textTransparent(RA8875_CYAN);
+    Adafruit_RA8875_textEnlarge(2);
+    Adafruit_RA8875_textWrite("Pinpoint!", 9);
+    Adafruit_RA8875_textEnlarge(1);
+    Adafruit_RA8875_textSetCursor(200, 140);
+    Adafruit_RA8875_textWrite("Locating...", 11);
+    Adafruit_RA8875_textSetCursor(760, 10);
+    Adafruit_RA8875_textTransparent(RA8875_YELLOW);
+    Adafruit_RA8875_textWrite(me.name, strlen(me.name));
+    Adafruit_RA8875_textSetCursor(760, 280);
+    Adafruit_RA8875_textTransparent(RA8875_YELLOW);
+    Adafruit_RA8875_textWrite("UTC 05:15:32", 12);
+    
+    
+    /* Switch to graphics mode and print the map */
+    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_drawCircle(500, 240, 239, RA8875_WHITE);
+    Adafruit_RA8875_drawCircle(500, 240, 160, RA8875_WHITE);
+    Adafruit_RA8875_drawCircle(500, 240, 80, RA8875_WHITE);
+    Adafruit_RA8875_fillCircle(500, 240, 7, RA8875_WHITE);
 
   PC_PutString("Finished TFT init\r\n");
 }

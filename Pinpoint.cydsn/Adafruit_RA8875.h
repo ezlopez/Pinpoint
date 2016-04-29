@@ -66,6 +66,7 @@ int Adafruit_RA8875_begin();
 void Adafruit_RA8875_softReset(void);
 void Adafruit_RA8875_displayOn(int on);
 void Adafruit_RA8875_sleep(int sleep);
+void Adafruit_RA8875_setOrientation(uint8 mode);
 
 /* Text functions */
 void Adafruit_RA8875_textMode(void);
