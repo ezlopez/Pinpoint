@@ -29,7 +29,8 @@ void Disp_FurtherInit(char *name) {
 */
 void Disp_Refresh_Screen(Position *my_pos, User *list) {
      // If you have more than 30 users, fix this
-    int latDist[30], lonDist[30], i;
+    double latDist[30], lonDist[30];
+    int i, totDist;
     int mapCenterX = 500, mapCenterY = 240; // Coords are flipped when drawing
     double maxDist = 6.0/4; // So that the default is 2.0
     char text[10];
@@ -39,9 +40,10 @@ void Disp_Refresh_Screen(Position *my_pos, User *list) {
     
     // Find all the distances
     for (i = 0; u; i++, u = u->next) {
+        // Might be treating list as array instead of linked list check it out **************
         latDist[i] = my_pos->lat - u->pos.lat;
-        lonDist[i] = (my_pos->lon - u->pos.lon) * cos((my_pos->lat + u->pos.lat) / 2);
-        int totDist = sqrt(pow(latDist[i], 2) + pow(lonDist[i], 2));
+        lonDist[i] = (my_pos->lon - u->pos.lon) * cos((my_pos->lat + u->pos.lat) / 2.0);
+        totDist = sqrt(pow(latDist[i], 2) + pow(lonDist[i], 2));
         
         if (totDist > maxDist)
             maxDist = totDist;
@@ -54,22 +56,24 @@ void Disp_Refresh_Screen(Position *my_pos, User *list) {
     Adafruit_RA8875_textEnlarge(0);
     Adafruit_RA8875_textColor(RA8875_WHITE, RA8875_BLACK);
     
-    Adafruit_RA8875_textSetCursor(740, 200);
+    Adafruit_RA8875_textSetCursor(730, 210);
     sprintf(text, "%0.1f mi", maxDist);
-    Adafruit_RA8875_textWrite(text, 12);
+    Adafruit_RA8875_textWrite(text, strlen(text));
     
-    Adafruit_RA8875_textSetCursor(660, 200);
+    Adafruit_RA8875_textSetCursor(650, 210);
     sprintf(text, "%0.1f mi", maxDist * 2 / 3);
-    Adafruit_RA8875_textWrite(text, 12);
+    Adafruit_RA8875_textWrite(text, strlen(text));
     
-    Adafruit_RA8875_textSetCursor(580, 200);
+    Adafruit_RA8875_textSetCursor(570, 210);
     sprintf(text, "%0.1f mi", maxDist / 3);
-    Adafruit_RA8875_textWrite(text, 12);
+    Adafruit_RA8875_textWrite(text, strlen(text));
     
     // Paint all the users
-    for (u = list; i; i--, u = u->next) {
-        Adafruit_RA8875_fillCircle(mapCenterX + latDist[i], 
-         mapCenterY + lonDist[i], 7, u->uniqueID & RA8875_WHITE);
+    for (u = list, i = 0; u; i++, u = u->next) {
+        int transX = 239 * latDist[i] / maxDist;
+        int transY = 239 * lonDist[i] / maxDist;
+        Adafruit_RA8875_fillCircle(mapCenterX + transX, 
+         mapCenterY + transY, 7, u->uniqueID & RA8875_WHITE);
     }
 }
 
@@ -77,17 +81,40 @@ void Disp_Refresh_Screen(Position *my_pos, User *list) {
     Prints the time on the bottom-right corner of the screen.
 */
 void Disp_Update_Time(int utc) {
-    char text[12];
+    static int prevMin = -1;
+    char text[13];
     int hours = utc / 10000;
     int minutes = (utc % 10000) / 100;
-    int seconds = (utc % 100);
+    char *meridiem;
+    char *format;
     
-    Adafruit_RA8875_textMode();
-    Adafruit_RA8875_textEnlarge(1);
-    Adafruit_RA8875_textSetCursor(760, 280);
-    Adafruit_RA8875_textColor(RA8875_YELLOW, RA8875_BLACK);
-    sprintf(text, "UTC %02d:%02d:%02d", hours, minutes, seconds);
-    Adafruit_RA8875_textWrite(text, 12);
+    if (minutes != prevMin) {
+        // Change to PDT, doesn't work during daylight savings
+        hours = (hours + 17) % 24;
+        
+        // Convert to 12-hour format
+        if (hours >= 12)
+            meridiem = "pm";
+        else
+            meridiem = "am";
+        hours %= 12;
+        if (hours == 0)
+            hours = 12;
+        
+        // Making sure to keep alignment
+        if (hours < 10)
+            format = " %d:%02d %s";
+        else
+            format = "%d:%02d %s";
+    
+        Adafruit_RA8875_textMode();
+        Adafruit_RA8875_textEnlarge(1);
+        Adafruit_RA8875_textSetCursor(760, 340);
+        Adafruit_RA8875_textColor(RA8875_YELLOW, RA8875_BLACK);
+        sprintf(text, format, hours, minutes, meridiem);
+        Adafruit_RA8875_textWrite(text, strlen(text));
+        prevMin = minutes;
+    }
 }
 
 /*

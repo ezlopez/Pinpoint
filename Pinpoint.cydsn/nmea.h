@@ -22,7 +22,7 @@ typedef enum {GGA, GSA, GSV, RMC, VTG, INVALID} nmea_type;
       ((struct _enumType*)_struct)->_pos = 0;\
    }\
    else {\
-      if (strcmp("%f", _format) || strcmp("%lf", _format)) {\
+      if (!strcmp("%f", _format) || !strcmp("%lf", _format)) {\
          /* PSOC doesn't handle foating point scanning very well */\
          ((struct _enumType*)_struct)->_pos = atof(_ptr);\
       }\

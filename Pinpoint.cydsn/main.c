@@ -66,33 +66,54 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     strncpy(me.name, "Alfred", 7); // Probably shouldn't hard-code***
     CyGetUniqueId(&me.id);
     
+    
+// Adding a fake position to test mapping *************
+XBEE_Header *fhdr =  (XBEE_Header*)xbUpdate;
+User *fu = (User*)(xbUpdate + sizeof(XBEE_Header));
+fhdr->destID = 0;
+fhdr->type = POSITION;
+fhdr->dataLen = sizeof(User);
+fu->groundCourse = 0;
+fu->groundSpeed = 0;
+strcpy(fu->name, "Bruce");
+fu->pdop = 0;
+fu->pos.lat = 35.301764;
+fu->pos.latDir = 'N';
+fu->pos.lon = 120.663410;
+fu->pos.lonDir = 'W';
+fu->uniqueID = RA8875_RED;
+fu->utc = 221000.0;
+    
     CyGlobalIntEnable;
     
     Disp_FurtherInit(me.name);
     GPS_FurtherInit();
 
-    gpsReady = broadcastReady = refreshReady = pcReady =  xbReady = 0;
+    Display_Refresh_Timer_ReadStatusRegister();
+    refreshReady = 0;
+    Broadcast_Timer_ReadStatusRegister();
+    broadcastReady = 0;
     
     while(1) {
-        if (pcReady) {
-            PC_PutString("Ack pc\n");
-            pcReady = 0;
-        }
         if (gpsReady) {
-            PC_PutString(gpsString);
+            PC_PutString("GPS\r\n");
             logGPSdata();
             gpsReady = 0;
         }
         if (xbReady) {
+            PC_PutString("\tXBEE User\r\n");
             logXBdata();
+            Disp_Refresh_Screen((Position*)&(me.rmc.lat), users);
             xbReady = 0;
         }
         if (refreshReady) {
-            Disp_Refresh_Screen((Position*)&(me.rmc.lat), users);
-            Disp_Update_Time(me.rmc.utc);
+            PC_PutString("Refresh\r\n");
+            Display_Refresh_Timer_ReadStatusRegister();
+            Disp_Update_Time((int)me.rmc.utc);
             refreshReady = 0;
         }
         if (broadcastReady) {
+            PC_PutString("\t\tBroadcast\r\n");
             broadcastPosition();
             broadcastReady = 0;
         }
@@ -149,7 +170,7 @@ void broadcastPosition() {
     User *u = (User*)(message + sizeof(XBEE_Header));
     
     Broadcast_Timer_ReadStatusRegister(); // Needed to clear interrupt output
-    
+/*    
     // Filling the header info
     hdr->destID = 0;
     hdr->type = POSITION;
@@ -163,8 +184,10 @@ void broadcastPosition() {
     u->pdop = me.gsa.pdop;
     u->groundSpeed = me.rmc.groundSpeed; // In knots
     u->groundCourse = me.rmc.groundCourse; // In degrees
-    
+
     XB_PutArray(message, sizeof(XBEE_Header) + sizeof(User));
+    PC_PutString("Sent XB\r\n");
+*/
 }
 
 void GPS_RXISR_ExitCallback() {
@@ -243,4 +266,5 @@ CY_ISR(TFT_REFRESH_INTER) {
 
 CY_ISR(BRDCST_LOC) {
     broadcastReady = 1;
+    xbReady = 1;
 }
