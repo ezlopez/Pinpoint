@@ -1,6 +1,9 @@
 #pragma pack(1)
 #include <cytypes.h>
 
+#ifndef __USERS_H
+#define __USERS_H
+    
 typedef struct Position {
     float64 lat;
     char   latDir; // N/S
@@ -24,5 +27,7 @@ typedef struct User {
     struct User *next;
 } User;
 
-void updateUser(User *list, User *update);
+void updateUsers(User **list, User *update);
 User *findUser(User *list, uint64 id);
+
+#endif

@@ -29,7 +29,6 @@
     Ezequiel Lopez - 04/22/16
 */
 
-//#include <Adafruit_GFX.h>
 #include <cytypes.h>
 #include "gfxfont.h"
 

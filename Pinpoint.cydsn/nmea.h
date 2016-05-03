@@ -1,10 +1,15 @@
 #pragma pack(1)
 
+#include <project.h>
 #include <cytypes.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#ifndef __NMEA_H
+#define __NMEA_H
 
 typedef enum {GGA, GSA, GSV, RMC, VTG, INVALID} nmea_type;
 
@@ -17,8 +22,14 @@ typedef enum {GGA, GSA, GSV, RMC, VTG, INVALID} nmea_type;
       ((struct _enumType*)_struct)->_pos = 0;\
    }\
    else {\
-      if (!sscanf(_ptr, _format, &((struct _enumType*)_struct)->_pos))\
-         type = INVALID;\
+      if (strcmp("%f", _format) || strcmp("%lf", _format)) {\
+         /* PSOC doesn't handle foating point scanning very well */\
+         ((struct _enumType*)_struct)->_pos = atof(_ptr);\
+      }\
+      else {\
+         if (!sscanf(_ptr, _format, &((struct _enumType*)_struct)->_pos))\
+            type = INVALID;\
+      }\
       if ((_temp = strchr(_ptr, ',')))\
          _ptr = _temp + 1;\
       else if((_temp = strchr(_ptr, '\0')))\
@@ -88,5 +99,8 @@ typedef struct VTG_Str {
    char  mode; // A = autonomous, D = differential, E = estimated
 } VTG_Str;
 
+void GPS_FurtherInit();
 nmea_type parseNMEA(char *sentence, void *strStruct);
 int validateChecksum(char *sentence);
+double DDMtoDD(double coord);
+#endif

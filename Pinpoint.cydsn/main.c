@@ -1,8 +1,9 @@
-#include <cyapicallbacks.h>
+#include <project.h>
 #include <stdlib.h>
-
+#include "cyapicallbacks.h"
+#include "users.h"
+#include "display.h"
 #include "main.h"
-#include "Adafruit_RA8875.h"
 
 // GPS RX buffer variables
 uint8 gpsBufLen = 0;
@@ -26,6 +27,8 @@ uint8 xbReady = 0;
 
 // TFT display variables
 CY_ISR_PROTO(TFT_INTER);
+CY_ISR_PROTO(TFT_REFRESH_INTER);
+uint8 refreshReady = 0;
 
 // List of the users we have seen on the network
 User *users = NULL;
@@ -33,11 +36,9 @@ User *users = NULL;
 // Our own information
 Self me;
 
-void rxBuffering();
-
 int main() {
 char test[200];
-XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
+XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     // Initializing GPS UART Module
     GPS_CLK_Start();
     GPS_Start();
@@ -57,7 +58,8 @@ XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
     // Initializing TFT display
     TFT_Start();
     TFT_ISR_StartEx(TFT_INTER);
-    TFT_CLOCK_Start();
+    Display_Refresh_Timer_Start();
+    Display_Refresh_StartEx(TFT_REFRESH_INTER);
 
     // Setting up our own user data
     memset(&me, 0, sizeof(me));
@@ -66,115 +68,35 @@ XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
     
     CyGlobalIntEnable;
     
-    TFT_FurtherInit();
+    Disp_FurtherInit(me.name);
     GPS_FurtherInit();
-    broadcastReady = 0;
+
+    gpsReady = broadcastReady = refreshReady = pcReady =  xbReady = 0;
     
-    while(1) {        
+    while(1) {
         if (pcReady) {
             PC_PutString("Ack pc\n");
             pcReady = 0;
         }
         if (gpsReady) {
-            //PC_PutString(gpsString);
+            PC_PutString(gpsString);
             logGPSdata();
             gpsReady = 0;
         }
         if (xbReady) {
-            //PC_PutString("XB Update:\r\n");
-            //CyGlobalIntDisable;
-            //sprintf(test, "\t%s (%ld)\r\n\tType %d (%ld bytes)\r\n\tUTC %6.3f\r\n", hdr->name, hdr->id, hdr->type, hdr->dataLen, hdr->utc);
-            //PC_PutString(test);
-            //CyGlobalIntEnable;
+            logXBdata();
             xbReady = 0;
+        }
+        if (refreshReady) {
+            Disp_Refresh_Screen((Position*)&(me.rmc.lat), users);
+            Disp_Update_Time(me.rmc.utc);
+            refreshReady = 0;
         }
         if (broadcastReady) {
             broadcastPosition();
             broadcastReady = 0;
         }
     }
-}
-
-/* Additional GPS setup:
- *    Temporarily kill all sentence output & clear buffer
- *    Set baudrate to 115200 (divider = 26 for 24 MHz clock)
- *    Set update rate to once per second
- *    Set NMEA output to be only RMC and GSA at every two seconds
- */
-void GPS_FurtherInit() {
-    CyDelay(1000);
-    // Kill sentence output
-    GPS_PutString("$PMTK314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n");
-    PC_PutString("Killing output\r\n");
-    GPS_ClearRxBuffer();
-    CyDelay(500); // Delay half a second to collect acknowledgement
-    GPS_ClearRxBuffer();
-    
-    /*// Update the baud rate on the GPS chip and GPS UART module
-    GPS_PutString("$PMTK251,115200*1F\r\n");
-    GPS_CLK_SetDividerValue(26);
-    PC_PutString("Changing baud rate\r\n");
-    CyDelay(500); // Delay half a second to collect acknowledgement
-    GPS_ClearRxBuffer();*/
-    
-    // Set GPS chip fix rate to 1 Hz
-    GPS_PutString("$PMTK220,1000*1F\r\n");
-    PC_PutString("Changing update rate\r\n");
-    CyDelay(500); // Delay half a second to collect acknowledgement
-    GPS_ClearRxBuffer();
-    
-    // Set GPS chip output to 0.5 Hz for RMC and GSA
-    GPS_PutString("$PMTK314,0,2,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n");
-    PC_PutString("Restarting output\r\n");
-    CyDelay(500); // Delay half a second to collect acknowledgement
-    GPS_ClearRxBuffer();
-    gpsReady = 0;
-}
-
-void TFT_FurtherInit() {
-    int i;
-    
-    if (!Adafruit_RA8875_begin()) {
-        PC_PutString("Failed to init TFT.\r\n");
-        return;
-    }
-    PC_PutString("TFT init succeeded.\r\n");
-    
-    Adafruit_RA8875_displayOn(1);
-    Adafruit_RA8875_GPIOX(1); // Enable TFT - display enable tied to GPIOX
-    Adafruit_RA8875_PWM1config(1, RA8875_PWM_CLK_DIV1024); // PWM output for backlight
-    Adafruit_RA8875_PWM1out(255);
-    
-    // ************************ Start playing with the screen *********************
-    // With hardware accelleration this is instant
-  Adafruit_RA8875_fillScreen(RA8875_BLACK);
-
-    /* Switch to text mode and print the header */  
-    Adafruit_RA8875_textMode();
-    Adafruit_RA8875_setOrientation(1);
-    Adafruit_RA8875_textSetCursor(10, 120);
-    Adafruit_RA8875_textTransparent(RA8875_CYAN);
-    Adafruit_RA8875_textEnlarge(2);
-    Adafruit_RA8875_textWrite("Pinpoint!", 9);
-    Adafruit_RA8875_textEnlarge(1);
-    Adafruit_RA8875_textSetCursor(200, 140);
-    Adafruit_RA8875_textWrite("Locating...", 11);
-    Adafruit_RA8875_textSetCursor(760, 10);
-    Adafruit_RA8875_textTransparent(RA8875_YELLOW);
-    Adafruit_RA8875_textWrite(me.name, strlen(me.name));
-    Adafruit_RA8875_textSetCursor(760, 280);
-    Adafruit_RA8875_textTransparent(RA8875_YELLOW);
-    Adafruit_RA8875_textWrite("UTC 05:15:32", 12);
-    
-    
-    /* Switch to graphics mode and print the map */
-    Adafruit_RA8875_graphicsMode();
-    Adafruit_RA8875_drawCircle(500, 240, 239, RA8875_WHITE);
-    Adafruit_RA8875_drawCircle(500, 240, 160, RA8875_WHITE);
-    Adafruit_RA8875_drawCircle(500, 240, 80, RA8875_WHITE);
-    Adafruit_RA8875_fillCircle(500, 240, 7, RA8875_WHITE);
-
-  PC_PutString("Finished TFT init\r\n");
 }
 
 void logGPSdata() {
@@ -199,39 +121,50 @@ void logGPSdata() {
             break;
         case INVALID:
         default:
-            //PC_PutString("Invalid NMEA string.\r\n");
+            PC_PutString("Invalid NMEA string.\r\n");
             break;
     }
     CyGlobalIntEnable;
 }
 
-CY_ISR(BRDCST_LOC) {
-    broadcastReady = 1;
+/*
+    Parses the message and enacts the appropriate action depending
+    on the type of data in the message.
+*/
+void logXBdata() {
+    XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
+    
+    if (hdr->type == POSITION) {
+        updateUsers(&users, (User*)(xbUpdate + sizeof(XBEE_Header)));
+    }
+    else {
+        // Currently not implemented ***
+        PC_PutString("Incorrect XB message type\r\n");
+    }
 }
 
 void broadcastPosition() {
-    XBEE_Header hdr;
-    XBEE_POSITION_MESSAGE pos;
-    char message[150]; // Rough estimate
+    uint8 message[sizeof(XBEE_Header) + sizeof(User)];
+    XBEE_Header *hdr = (XBEE_Header*)message;
+    User *u = (User*)(message + sizeof(XBEE_Header));
     
     Broadcast_Timer_ReadStatusRegister(); // Needed to clear interrupt output
     
     // Filling the header info
-    memset(hdr.name, 0, 20);
-    strcpy(hdr.name, "Alfred");//me.name);
-    hdr.id = me.id;
-    hdr.utc = me.rmc.utc;
-    hdr.type = POSITION;
-    hdr.dataLen = 0;//sizeof(XBEE_POSITION_MESSAGE);
+    hdr->destID = 0;
+    hdr->type = POSITION;
+    hdr->dataLen = sizeof(User);
     
-    // Filling the position info
-    //memcpy(&pos.pos, &me.rmc.lat, sizeof(Position)); // Only works because it's packed
+    // Fill the user info
+    u->uniqueID = me.id;
+    strcpy(u->name, me.name);
+    u->utc = me.rmc.utc;
+    memcpy(&(u->pos), &(me.rmc.lat), sizeof(Position)); // Works because packed
+    u->pdop = me.gsa.pdop;
+    u->groundSpeed = me.rmc.groundSpeed; // In knots
+    u->groundCourse = me.rmc.groundCourse; // In degrees
     
-    // Concatenating the header and payload
-    //memcpy(message, &hdr, sizeof(hdr));
-    //memcpy(message + sizeof(hdr), &pos, sizeof(pos));
-    
-    XB_PutArray((uint8*)&hdr, sizeof(hdr));// + sizeof(pos));
+    XB_PutArray(message, sizeof(XBEE_Header) + sizeof(User));
 }
 
 void GPS_RXISR_ExitCallback() {
@@ -267,10 +200,6 @@ void PC_RXISR_ExitCallback() {
     CyGlobalIntEnable;
 }
 
-CY_ISR(TFT_INTER) {
-    PC_PutString("Got display interrupt\r\n");
-}
-
 CY_ISR(XBEE_RCV){
     XBEE_Header *hdr = (XBEE_Header*) xbBuffer;
 
@@ -285,7 +214,7 @@ CY_ISR(XBEE_RCV){
             return;
         }
     }
-   /* 
+    
     while(xbBufLen < sizeof(XBEE_Header) + hdr->dataLen) {
         if (XB_GetRxBufferSize()) {
             xbBuffer[xbBufLen++] = XB_ReadRxData();
@@ -295,7 +224,6 @@ CY_ISR(XBEE_RCV){
             return;
         }
     }
-*/
     
     // Transfering data to the second buffer
     xbReady = 1;
@@ -303,4 +231,16 @@ CY_ISR(XBEE_RCV){
     xbBufLen = 0;
 
     CyGlobalIntEnable;
+}
+
+CY_ISR(TFT_INTER) {
+    PC_PutString("Got display interrupt\r\n");
+}
+
+CY_ISR(TFT_REFRESH_INTER) {
+    refreshReady = 1;
+}
+
+CY_ISR(BRDCST_LOC) {
+    broadcastReady = 1;
 }

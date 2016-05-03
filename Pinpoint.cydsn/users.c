@@ -5,18 +5,15 @@
 /*
  * Updates the user list with the given information.
  * If the user does not exist, a new one is created and
- * appended to the end of the list.
+ * prepended to the list.
  */
-void updateUser(User *list, User *update) {
+void updateUsers(User **list, User *update) {
     User *user;
     
-    if (!(user = findUser(list, update->uniqueID))) {
-        // Go to the end and create a new user
-        user = list;
-        while (user->next)
-           user = user->next;
-        user->next = calloc(sizeof(User), 1);
-        user = user->next;
+    if (!(user = findUser(*list, update->uniqueID))) {
+        user = calloc(sizeof(User), 1);
+        user->next = *list;
+        *list = user;
     }
     
     // Update the info other than the next pointer
