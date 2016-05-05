@@ -29,24 +29,26 @@ void Disp_FurtherInit(char *name) {
 */
 void Disp_Refresh_Screen(Position *my_pos, User *list) {
      // If you have more than 30 users, fix this
-    double latDist[30], lonDist[30];
-    int i, totDist;
-    int mapCenterX = 500, mapCenterY = 240; // Coords are flipped when drawing
+    double latDist[30], lonDist[30], totDist;
+    int i, numInvalid = 0;
     double maxDist = 6.0/4; // So that the default is 2.0
-    char text[10];
+    double transX, transY;
+    char text[100];
     User *u = list;
     
     Disp_Clear_Map();
     
     // Find all the distances
     for (i = 0; u; i++, u = u->next) {
-        // Might be treating list as array instead of linked list check it out **************
-        latDist[i] = my_pos->lat - u->pos.lat;
-        lonDist[i] = (my_pos->lon - u->pos.lon) * cos((my_pos->lat + u->pos.lat) / 2.0);
-        totDist = sqrt(pow(latDist[i], 2) + pow(lonDist[i], 2));
-        
-        if (totDist > maxDist)
-            maxDist = totDist;
+        // Only calculate if ours and the user's positions are valid
+        if (u->pos.latDir && my_pos->latDir) {
+            latDist[i] = 3959 * M_PI / 180 * (my_pos->lat - u->pos.lat);
+            lonDist[i] = 3959 * M_PI / 180 * (my_pos->lon - u->pos.lon)
+             * cos(M_PI / 180 * (my_pos->lat + u->pos.lat) / 2.0);
+            totDist = sqrt(latDist[i] * latDist[i] + lonDist[i] * lonDist[i]);
+            if (totDist > maxDist)
+                maxDist = totDist;
+        }
     }
     
     maxDist *= 4.0 / 3;
@@ -68,12 +70,38 @@ void Disp_Refresh_Screen(Position *my_pos, User *list) {
     sprintf(text, "%0.1f mi", maxDist / 3);
     Adafruit_RA8875_textWrite(text, strlen(text));
     
+    if (!list) {
+        Adafruit_RA8875_textEnlarge(0);
+        Adafruit_RA8875_textColor(RA8875_RED, RA8875_BLACK);
+        Adafruit_RA8875_textSetCursor(240, 160);
+        Adafruit_RA8875_textWrite("Searching for users...", 22);
+    }
+    else if (!my_pos->latDir) {
+        Adafruit_RA8875_textEnlarge(0);
+        Adafruit_RA8875_textColor(RA8875_RED, RA8875_BLACK);
+        Adafruit_RA8875_textSetCursor(240, 160);
+        Adafruit_RA8875_textWrite("Waiting for location...", 23);
+    }
+    
+    
     // Paint all the users
     for (u = list, i = 0; u; i++, u = u->next) {
-        int transX = 239 * latDist[i] / maxDist;
-        int transY = 239 * lonDist[i] / maxDist;
-        Adafruit_RA8875_fillCircle(mapCenterX + transX, 
-         mapCenterY + transY, 7, u->uniqueID & RA8875_WHITE);
+        if (u->pos.latDir != 0 && my_pos->latDir) {
+            transX = 240 * latDist[i] / maxDist;
+            transY = 240 * lonDist[i] / maxDist;
+            Adafruit_RA8875_fillCircle(500 + transX, 240 - transY, 7, u->uniqueID & RA8875_WHITE);
+        }
+        else
+            ++numInvalid;
+    }
+    
+    if (numInvalid) {
+        Adafruit_RA8875_textSetCursor(220, 150);
+        Adafruit_RA8875_textEnlarge(0);
+        Adafruit_RA8875_textColor(RA8875_RED, RA8875_BLACK);
+        sprintf(text, "%d unknown positions", numInvalid);
+        Adafruit_RA8875_textWrite(text, strlen(text));
+        
     }
 }
 
@@ -125,7 +153,7 @@ void Disp_Clear_Map() {
     Adafruit_RA8875_graphicsMode();
     
     // Clear the map area
-    Adafruit_RA8875_rectHelper(740, 0, 479, 479, RA8875_BLACK, 1);
+    Adafruit_RA8875_rectHelper(200, 0, 760, 479, RA8875_BLACK, 1);
     
     // Redraw the bullseye
     Adafruit_RA8875_drawCircle(500, 240, 239, RA8875_WHITE);

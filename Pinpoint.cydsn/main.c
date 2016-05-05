@@ -37,7 +37,6 @@ User *users = NULL;
 Self me;
 
 int main() {
-char test[200];
 XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     // Initializing GPS UART Module
     GPS_CLK_Start();
@@ -66,24 +65,6 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     strncpy(me.name, "Alfred", 7); // Probably shouldn't hard-code***
     CyGetUniqueId(&me.id);
     
-    
-// Adding a fake position to test mapping *************
-XBEE_Header *fhdr =  (XBEE_Header*)xbUpdate;
-User *fu = (User*)(xbUpdate + sizeof(XBEE_Header));
-fhdr->destID = 0;
-fhdr->type = POSITION;
-fhdr->dataLen = sizeof(User);
-fu->groundCourse = 0;
-fu->groundSpeed = 0;
-strcpy(fu->name, "Bruce");
-fu->pdop = 0;
-fu->pos.lat = 35.301764;
-fu->pos.latDir = 'N';
-fu->pos.lon = 120.663410;
-fu->pos.lonDir = 'W';
-fu->uniqueID = RA8875_RED;
-fu->utc = 221000.0;
-    
     CyGlobalIntEnable;
     
     Disp_FurtherInit(me.name);
@@ -94,9 +75,13 @@ fu->utc = 221000.0;
     Broadcast_Timer_ReadStatusRegister();
     broadcastReady = 0;
     
+char test[100];
+sprintf(test, "sizeof(XBEE_Header) + sizeof(User) = %d\r\n", sizeof(XBEE_Header) + sizeof(User));
+PC_PutString(test);
+    
     while(1) {
         if (gpsReady) {
-            PC_PutString("GPS\r\n");
+            //PC_PutString("GPS\r\n");
             logGPSdata();
             gpsReady = 0;
         }
@@ -170,7 +155,7 @@ void broadcastPosition() {
     User *u = (User*)(message + sizeof(XBEE_Header));
     
     Broadcast_Timer_ReadStatusRegister(); // Needed to clear interrupt output
-/*    
+    
     // Filling the header info
     hdr->destID = 0;
     hdr->type = POSITION;
@@ -186,8 +171,6 @@ void broadcastPosition() {
     u->groundCourse = me.rmc.groundCourse; // In degrees
 
     XB_PutArray(message, sizeof(XBEE_Header) + sizeof(User));
-    PC_PutString("Sent XB\r\n");
-*/
 }
 
 void GPS_RXISR_ExitCallback() {
@@ -266,5 +249,4 @@ CY_ISR(TFT_REFRESH_INTER) {
 
 CY_ISR(BRDCST_LOC) {
     broadcastReady = 1;
-    xbReady = 1;
 }
