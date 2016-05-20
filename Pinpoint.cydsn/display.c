@@ -1,6 +1,10 @@
 #include "display.h"
 #include <project.h>
 
+/*
+    Turns all functions of the display on, runs through the touch-screen
+    callibration with the user, and draws the home screen.
+*/
 void Disp_FurtherInit(char *name) {
     int i;
     
@@ -15,11 +19,69 @@ void Disp_FurtherInit(char *name) {
     Adafruit_RA8875_PWM1config(1, RA8875_PWM_CLK_DIV1024); // PWM output for backlight
     Adafruit_RA8875_PWM1out(255);
     
+    uint16 z[9] = {0,0,1,
+                   0,0,1,
+                   0,0,1};
+    int testX[3] = {700, 135, 452};
+    int testY[3] = {400, 210, 108};
+    
+    // 3-Point Touch screen callibration
+    // https://www.maximintegrated.com/en/app-notes/index.mvp/id/5296
+    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_touchEnable(1);
+    for (i = 0; i < 3; i++) {
+        Adafruit_RA8875_fillScreen(RA8875_BLACK);
+        Adafruit_RA8875_fillCircle(testX[i], testY[i], 5, RA8875_WHITE);
+        // Clear out old touches
+        if (Adafruit_RA8875_touched())
+            Adafruit_RA8875_touchRead(NULL, NULL);
+        while(!Adafruit_RA8875_touched());
+        Adafruit_RA8875_touchRead(z + 3 * i, 1 + z + 3 * i);
+        CyDelay(300);
+    }
+    if (Adafruit_RA8875_touched())
+        Adafruit_RA8875_touchRead(NULL, NULL);
+            
+    double z_inv[9] = {z[4]*z[8] - z[5]*z[7], z[2]*z[7] - z[1]*z[8], z[1]*z[5] - z[2]*z[4],
+                       z[5]*z[6] - z[3]*z[8], z[0]*z[8] - z[2]*z[6], z[2]*z[3] - z[0]*z[5],
+                       z[3]*z[7] - z[4]*z[6], z[1]*z[6] - z[0]*z[7], z[0]*z[4] - z[1]*z[3]};
+    
+    double det_z = z[0] * z_inv[0] + z[1] * z_inv[3] + z[2] * z_inv[6];
+    
+    for (i = 0; i < 9; i++)
+       z_inv[i] /= det_z;
+    
+    tsCalCoeff[0] = z_inv[0]*testX[0] + z_inv[1]*testX[1] + z_inv[2]*testX[2];
+    tsCalCoeff[1] = z_inv[3]*testX[0] + z_inv[4]*testX[1] + z_inv[5]*testX[2];
+    tsCalCoeff[2] = z_inv[6]*testX[0] + z_inv[7]*testX[1] + z_inv[8]*testX[2];
+    tsCalCoeff[3] = z_inv[0]*testY[0] + z_inv[1]*testY[1] + z_inv[2]*testY[2];
+    tsCalCoeff[4] = z_inv[3]*testY[0] + z_inv[4]*testY[1] + z_inv[5]*testY[2];
+    tsCalCoeff[5] = z_inv[6]*testY[0] + z_inv[7]*testY[1] + z_inv[8]*testY[2];
+    
     Disp_drawCanvas(name);
     Disp_Update_Time(0);
     Disp_Refresh_Screen(NULL, NULL);
+    curMenu = MENU_HOME;
+    
+    PC_PutString("Finished TFT init\r\n");
+}
 
-  PC_PutString("Finished TFT init\r\n");
+/*
+    Returns 1 and updates the values in x and y to be the pixel
+    coordinates of the last touch. Else, returns 0;
+*/
+int Disp_Get_Touch(uint16 *x, uint16 *y) {
+    if (Adafruit_RA8875_touched()) {
+        uint16 tempX, tempY;
+        Adafruit_RA8875_touchRead(&tempX, &tempY);
+        *x = tempX * tsCalCoeff[0] + tempY * tsCalCoeff[1] + tsCalCoeff[2];
+        tempY = tempX * tsCalCoeff[3] + tempY * tsCalCoeff[4] + tsCalCoeff[5];
+        // Need to flip Y because of text orientation
+        *y = tempY * -1 + 480;
+        return 1;
+    }
+    
+    return 0;
 }
 
 /*
@@ -83,7 +145,7 @@ void Disp_Refresh_Screen(Position *my_pos, User *list) {
         Adafruit_RA8875_textWrite("Waiting for location...", 23);
     }
     
-    
+    Adafruit_RA8875_graphicsMode();
     // Paint all the users
     for (u = list, i = 0; u; i++, u = u->next) {
         if (u->pos.latDir != 0 && my_pos->latDir) {
@@ -96,6 +158,7 @@ void Disp_Refresh_Screen(Position *my_pos, User *list) {
     }
     
     if (numInvalid) {
+        Adafruit_RA8875_textMode();
         Adafruit_RA8875_textSetCursor(220, 150);
         Adafruit_RA8875_textEnlarge(0);
         Adafruit_RA8875_textColor(RA8875_RED, RA8875_BLACK);

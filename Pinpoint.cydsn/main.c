@@ -26,7 +26,6 @@ uint8  xbUpdate[200];
 uint8 xbReady = 0;
 
 // TFT display variables
-CY_ISR_PROTO(TFT_INTER);
 CY_ISR_PROTO(TFT_REFRESH_INTER);
 uint8 refreshReady = 0;
 
@@ -37,6 +36,7 @@ User *users = NULL;
 Self me;
 
 int main() {
+    uint16 x, y;
 XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     // Initializing GPS UART Module
     GPS_CLK_Start();
@@ -56,7 +56,6 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     
     // Initializing TFT display
     TFT_Start();
-    TFT_ISR_StartEx(TFT_INTER);
     Display_Refresh_Timer_Start();
     Display_Refresh_StartEx(TFT_REFRESH_INTER);
 
@@ -74,10 +73,6 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     refreshReady = 0;
     Broadcast_Timer_ReadStatusRegister();
     broadcastReady = 0;
-    
-char test[100];
-sprintf(test, "sizeof(XBEE_Header) + sizeof(User) = %d\r\n", sizeof(XBEE_Header) + sizeof(User));
-PC_PutString(test);
     
     while(1) {
         if (gpsReady) {
@@ -101,6 +96,10 @@ PC_PutString(test);
             PC_PutString("\t\tBroadcast\r\n");
             broadcastPosition();
             broadcastReady = 0;
+        }
+        if (Disp_Get_Touch(&x, &y)) {
+            Adafruit_RA8875_graphicsMode();
+            Adafruit_RA8875_fillCircle(x, y, 5, RA8875_WHITE);
         }
     }
 }
@@ -237,10 +236,6 @@ CY_ISR(XBEE_RCV){
     xbBufLen = 0;
 
     CyGlobalIntEnable;
-}
-
-CY_ISR(TFT_INTER) {
-    PC_PutString("Got display interrupt\r\n");
 }
 
 CY_ISR(TFT_REFRESH_INTER) {
