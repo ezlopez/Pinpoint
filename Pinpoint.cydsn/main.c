@@ -87,7 +87,7 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
         if (refreshReady) {
             //PC_PutString("Refresh\r\n");
             Display_Refresh_Timer_ReadStatusRegister();
-            Disp_Update_Time();
+            Disp_Update_Time(0);
             refreshReady = 0;
         }
         if (broadcastReady) {

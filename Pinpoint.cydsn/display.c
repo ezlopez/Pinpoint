@@ -86,6 +86,10 @@ int Disp_Get_Touch(uint16 *x, uint16 *y) {
     Performs the action requested by the user's touch, if any.
 */
 void Disp_touchResponse(int x, int y) {
+    int listInd;
+    User *u;
+    
+    
     // Back is on all menus but home
     if (curMenu != MENU_HOME && (BUTTON_HIT(x, y, 750, 0))) {
         PC_PutString("Back button\r\n");
@@ -110,16 +114,39 @@ void Disp_touchResponse(int x, int y) {
         case MENU_SETTINGS:
             break;
         case MENU_MESSAGES:
+            listInd = (LIST_POS(x, 100, 50, 13));
+            if (listInd >= 0 && (u = findUserAtPos(myself->users, listInd))) {
+                goToMenu(MENU_CONVERSATION, u);
+            }
             break;
         case MENU_INFO:
+            listInd = (LIST_POS(x, 100, 50, 13));
+            if (listInd >= 0) {
+                if (listInd == 0) {
+                    goToMenu(MENU_INFO_DETAILS, myself);
+                }
+                else if ((u = findUserAtPos(myself->users, --listInd))){
+                    goToMenu(MENU_INFO_DETAILS, u);
+                }
+            }
             break;
         case MENU_NAME_EDIT:
             break;
         case MENU_CONVERSATION:
+            if (BUTTON_HIT(x, y, 750, 330)) {
+                goToMenu(MENU_COMPOSE, curConvo);
+            }
             break;
         case MENU_COMPOSE:
             break;
         case MENU_INFO_DETAILS:
+            if (BUTTON_HIT(x, y, 300, 0)) {
+                PC_PutString("Messages button\r\n");
+                if (curDetails == myself)
+                    goToMenu(MENU_MESSAGES, NULL);
+                else
+                    goToMenu(MENU_CONVERSATION, curDetails);
+            }
             break;
         default:
             PC_PutString("Invalid menu\r\n");
@@ -224,8 +251,10 @@ void Disp_Refresh_Map() {
 
 /*
     Prints the time on the bottom-right corner of the screen.
+    Only prints when the minute changes unless <force> is set
+    to 1;
 */
-void Disp_Update_Time() {
+void Disp_Update_Time(int force) {
     int utc = myself->rmc.utc;
     static int prevMin = -1;
     char text[13];
@@ -234,7 +263,7 @@ void Disp_Update_Time() {
     char *meridiem;
     char *format;
     
-    if (minutes != prevMin) {
+    if ((minutes != prevMin && curMenu == MENU_HOME) || force) {
         // Change to PDT, doesn't work during daylight savings
         hours = (hours + 17) % 24;
         
@@ -298,7 +327,7 @@ void drawHome() {
     
     /* Print the rest */
     Disp_Refresh_Map();
-    Disp_Update_Time();
+    Disp_Update_Time(1);
 }
 
 void drawSettings(){
@@ -322,6 +351,10 @@ void drawSettings(){
 }
 
 void drawMessages(){
+    int x;
+    User *u;
+    char str[50];
+    
     /* Print the buttons */
     Adafruit_RA8875_graphicsMode();
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
@@ -334,6 +367,17 @@ void drawMessages(){
     Adafruit_RA8875_textEnlarge(2);
     Adafruit_RA8875_textWrite("Messages", 8);
     
+    /* Print the list */
+    // Will break for more than 13 users ***
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    x = 100;
+    for (u = myself->users; u; u = u->next) {
+        Adafruit_RA8875_textSetCursor(x, 10);
+        sprintf(str, "%s(%d)", u->name, u->numMsgs);
+        Adafruit_RA8875_textWrite(str, strlen(str));
+        x += 50;
+    }
+        
     /* Print the button labels */
     Adafruit_RA8875_textEnlarge(1);
     Adafruit_RA8875_textTransparent(RA8875_WHITE);
@@ -342,6 +386,8 @@ void drawMessages(){
 }
 
 void drawInfo(){
+    User *u;
+    int x = 150;
     /* Print the buttons */
     Adafruit_RA8875_graphicsMode();
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
@@ -349,10 +395,21 @@ void drawInfo(){
 
     /* Print the title */  
     Adafruit_RA8875_textMode();
-    Adafruit_RA8875_textSetCursor(10, 115);
+    Adafruit_RA8875_textSetCursor(10, 95);
     Adafruit_RA8875_textTransparent(RA8875_CYAN);
     Adafruit_RA8875_textEnlarge(2);
     Adafruit_RA8875_textWrite("Information", 11);
+    
+    /* Print the list */
+    // Will break for more than 13 users ***
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    Adafruit_RA8875_textSetCursor(100, 10);
+    Adafruit_RA8875_textWrite("You", 3);
+    for (u = myself->users; u; u = u->next) {
+        Adafruit_RA8875_textSetCursor(x, 10);
+        Adafruit_RA8875_textWrite(u->name, strlen(u->name));
+        x += 50;
+    }
     
     /* Print the button labels */
     Adafruit_RA8875_textEnlarge(1);
@@ -365,14 +422,146 @@ void drawNameEdit(){
 }
 
 void drawConvo(User *user){
+    Message *m = user->msgs;
+    int x = 100;
+    
+    curConvo = user;
+    
+    /* Print the buttons */
+    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_fillScreen(RA8875_BLACK);
+    Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
+    Adafruit_RA8875_fillRoundRect(750, 330, 50, 150, 5, RA8875_BLUE);
+
+    /* Print the title */  
+    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textTransparent(RA8875_CYAN);
+    Adafruit_RA8875_textEnlarge(2);
+    Adafruit_RA8875_textSetCursor(10, 95);
+    Adafruit_RA8875_textWrite("Conversation", 12);
+    
+    /* Print the conversation */
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    Adafruit_RA8875_textEnlarge(1);
+    int lines = 0;
+    if (m) {
+        // Count the messages we can display
+        do {
+            m = m->prev;
+            int tempLines = m->msgLen / CHAR_PER_LINE + 1;
+            if (tempLines + lines > MAX_LINES) {
+                m = m->next;
+                break;
+            }
+            lines += tempLines;
+        } while(m != user->msgs);
+        
+        // Display the messages.
+        do {
+            // Draw the boxes around the text
+            // Implement me *******
+            
+            // Write the text
+            Adafruit_RA8875_textSetCursor(x, 0);
+            Adafruit_RA8875_textWrite(m->msg, m->msgLen);
+            
+            x += (int)(m->msgLen / CHAR_PER_LINE + 1) * PIX_PER_LINE;
+            m = m->next;
+        } while(m != user->msgs);
+    }
+    
+    /* Print the button labels */
+    Adafruit_RA8875_textEnlarge(1);
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    Adafruit_RA8875_textSetCursor(757, 43);
+    Adafruit_RA8875_textWrite("Back", 4);
+    Adafruit_RA8875_textSetCursor(757, 349);
+    Adafruit_RA8875_textWrite("Compose", 7);
 }
 
 void drawCompose(User *user){
 }
 
 void drawDetails(void *user){
-}
+    char str[50];
+    
+    curDetails = user;
+    
+    /* Print the buttons */
+    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_fillScreen(RA8875_BLACK);
+    Adafruit_RA8875_fillRoundRect(300,   0, 50, 150, 5, RA8875_BLUE);
+    Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
 
+    /* Print the title */  
+    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textSetCursor(10, 95);
+    Adafruit_RA8875_textTransparent(RA8875_CYAN);
+    Adafruit_RA8875_textEnlarge(2);
+    Adafruit_RA8875_textWrite("User Details", 12);
+    
+    /* Print the user info */
+    if (user == myself) {
+        //Adafruit_RA8875_textEnlarge(1);
+        Adafruit_RA8875_textTransparent(RA8875_WHITE);
+        Adafruit_RA8875_textSetCursor(100, 10);
+        Adafruit_RA8875_textWrite(myself->name, strlen(myself->name));
+    
+        sprintf(str, "ID: %lu", myself->id);
+        Adafruit_RA8875_textSetCursor(150, 10);
+        Adafruit_RA8875_textWrite(str, strlen(str));
+
+        Adafruit_RA8875_textSetCursor(200, 10);
+        // Easy way to test for a valid position
+        if (myself->rmc.latDir) {
+            Adafruit_RA8875_textWrite("Position:", 9);
+            Adafruit_RA8875_textSetCursor(250, 10);
+            sprintf(str, "%0.4f%c, %0.4f%c", myself->rmc.lat, 248, myself->rmc.lon, 248);
+            Adafruit_RA8875_textWrite(str, strlen(str));
+        }
+        else {
+            Adafruit_RA8875_textWrite("Unknown position", 16);
+        }
+    }
+    else if (user){
+        User *u = (User*)user;
+        //Adafruit_RA8875_textEnlarge(1);
+        Adafruit_RA8875_textTransparent(RA8875_WHITE);
+        Adafruit_RA8875_textSetCursor(100, 10);
+        Adafruit_RA8875_textWrite(u->name, strlen(u->name));
+    
+        sprintf(str, "ID: %llu", u->uniqueID);
+        Adafruit_RA8875_textSetCursor(150, 10);
+        Adafruit_RA8875_textWrite(str, strlen(str));
+
+        Adafruit_RA8875_textSetCursor(200, 10);
+        // Easy way to test for a valid position
+        if (u->pos.latDir) {
+            Adafruit_RA8875_textWrite("Position:", 9);
+            Adafruit_RA8875_textSetCursor(250, 10);
+            sprintf(str, "%0.4f%c, %0.4f%c", u->pos.lat, 248, u->pos.lon, 248);
+            Adafruit_RA8875_textWrite(str, strlen(str));
+        }
+        else {
+            Adafruit_RA8875_textWrite("Unknown position", 16);
+        }
+    }
+    else {
+        // Shouldn't happen, but we'll get a warning
+        // if it does
+        Adafruit_RA8875_textSetCursor(100, 400);
+        Adafruit_RA8875_textTransparent(RA8875_RED);
+        Adafruit_RA8875_textWrite("NULL USER", 9);
+    }
+    
+    /* Print the button labels */
+    Adafruit_RA8875_textEnlarge(1);
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    Adafruit_RA8875_textSetCursor(307, 12);
+    Adafruit_RA8875_textWrite("Messages", 8);
+    Adafruit_RA8875_textSetCursor(757, 43);
+    Adafruit_RA8875_textWrite("Back", 4);
+}
 
 /*
     Draws the requested menu and updates curMenu accordingly.

@@ -35,3 +35,17 @@ User *findUser(User *list, uint64 id) {
     
     return cur;
 }
+
+/*
+    Returns the pointer to the user at the given 
+    position if found, or a pointer to null if not.
+ */
+User *findUserAtPos(User *list, unsigned int pos) {
+    User *cur = list;
+    
+    while (cur && pos-- > 0) {
+        cur = cur->next;
+    }
+    
+    return cur;
+}

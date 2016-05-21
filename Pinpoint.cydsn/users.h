@@ -11,6 +11,14 @@ typedef struct Position {
     char   lonDir; // E/W
 } Position;
 
+typedef struct Message {
+    uint8 msgLen;
+    char *msg;
+    uint8 sent;
+    struct Message *next;
+    struct Message *prev;
+} Message;
+
 typedef struct User {
     uint64      uniqueID;
     char        name[20];
@@ -24,10 +32,12 @@ typedef struct User {
     */
     float       groundSpeed; // In knots
     float       groundCourse; // In degrees
+    uint8       numMsgs;
+    Message     *msgs;
     struct User *next;
 } User;
 
 void updateUsers(User **list, User *update);
 User *findUser(User *list, uint64 id);
-
+User *findUserAtPos(User *list, unsigned int pos);
 #endif
