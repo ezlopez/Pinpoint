@@ -1,6 +1,9 @@
 #pragma pack(1)
 #include "nmea.h"
+#include "users.h"
 
+#ifndef __MAIN_H__
+#define __MAIN_H__
 typedef struct Self {
     char    name[20];
     uint32  id;
@@ -9,6 +12,7 @@ typedef struct Self {
     GSV_Str gsv;
     RMC_Str rmc;
     VTG_Str vtg;
+    User *users; // Users we have seen on the network
 } Self;
 
 typedef enum {POSITION, MESSAGE, PROBE_REQ, PROBE_RES} XB_Payload_Type;
@@ -25,3 +29,4 @@ void GPS_RXISR_ExitCallback();
 void PC_RXISR_ExitCallback();
 void XB_RXISR_ExitCallback();
 void logXBdata();
+#endif

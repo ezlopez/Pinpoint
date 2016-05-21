@@ -3,6 +3,11 @@
 #include "Adafruit_RA8875.h"
 #include "users.h"
 #include "nmea.h"
+#include "main.h"
+
+// Since all buttons are the same size I can use this macro
+#define BUTTON_HIT(_T_X, _T_Y, _B_X, _B_Y)\
+   (_T_X >= _B_X && _T_X <= _B_X + 150 && _T_Y >= _B_Y && _T_Y <= _B_Y + 50)
 
 #ifndef __DISPLAY_H
 #define __DISPLAY_H
@@ -24,15 +29,28 @@ float tsCalCoeff[6];
 typedef enum {MENU_HOME, MENU_SETTINGS, MENU_MESSAGES, MENU_INFO, MENU_NAME_EDIT, 
     MENU_CONVERSATION, MENU_COMPOSE, MENU_INFO_DETAILS} Menu;
 
-static int previous[9] = {MENU_HOME, MENU_HOME, MENU_HOME, MENU_HOME, 
+static Menu previous[9] = {MENU_HOME, MENU_HOME, MENU_HOME, MENU_HOME, 
     MENU_SETTINGS, MENU_MESSAGES, MENU_CONVERSATION, MENU_INFO};
 
-int curMenu;
+Menu curMenu;
 
-void Disp_FurtherInit(char *name);
-void Disp_Refresh_Screen(Position *my_pos, User *list);
-void Disp_drawCanvas(char *name);
-void Disp_Update_Time(int utc);
+Self *myself;
+
+/* "Public" functions */
+void Disp_FurtherInit(Self *me);
+void Disp_Refresh_Map();
+void Disp_Update_Time();
 int  Disp_Get_Touch(uint16 *x, uint16 *y);
-void Disp_Clear_Map();
+void Disp_touchResponse(int x, int y);
+
+/* "Private" functions */
+void drawHome();
+void drawSettings();
+void drawMessages();
+void drawInfo();
+void drawNameEdit();
+void drawConvo(User *user);
+void drawCompose(User *user);
+void drawDetails(void *user);
+void goToMenu(Menu m, void *arg);
 #endif

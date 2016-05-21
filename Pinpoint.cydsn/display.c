@@ -5,7 +5,7 @@
     Turns all functions of the display on, runs through the touch-screen
     callibration with the user, and draws the home screen.
 */
-void Disp_FurtherInit(char *name) {
+void Disp_FurtherInit(Self *me) {
     int i;
     
     if (!Adafruit_RA8875_begin()) {
@@ -18,15 +18,16 @@ void Disp_FurtherInit(char *name) {
     Adafruit_RA8875_GPIOX(1); // Enable TFT - display enable tied to GPIOX
     Adafruit_RA8875_PWM1config(1, RA8875_PWM_CLK_DIV1024); // PWM output for backlight
     Adafruit_RA8875_PWM1out(255);
+    Adafruit_RA8875_setOrientation(1);
     
+    // 3-Point Touch screen callibration
+    // https://www.maximintegrated.com/en/app-notes/index.mvp/id/5296
     uint16 z[9] = {0,0,1,
                    0,0,1,
                    0,0,1};
     int testX[3] = {700, 135, 452};
     int testY[3] = {400, 210, 108};
     
-    // 3-Point Touch screen callibration
-    // https://www.maximintegrated.com/en/app-notes/index.mvp/id/5296
     Adafruit_RA8875_graphicsMode();
     Adafruit_RA8875_touchEnable(1);
     for (i = 0; i < 3; i++) {
@@ -58,10 +59,9 @@ void Disp_FurtherInit(char *name) {
     tsCalCoeff[4] = z_inv[3]*testY[0] + z_inv[4]*testY[1] + z_inv[5]*testY[2];
     tsCalCoeff[5] = z_inv[6]*testY[0] + z_inv[7]*testY[1] + z_inv[8]*testY[2];
     
-    Disp_drawCanvas(name);
-    Disp_Update_Time(0);
-    Disp_Refresh_Screen(NULL, NULL);
-    curMenu = MENU_HOME;
+    // Finally show the home screen
+    myself = me;
+    goToMenu(MENU_HOME, NULL);
     
     PC_PutString("Finished TFT init\r\n");
 }
@@ -75,9 +75,7 @@ int Disp_Get_Touch(uint16 *x, uint16 *y) {
         uint16 tempX, tempY;
         Adafruit_RA8875_touchRead(&tempX, &tempY);
         *x = tempX * tsCalCoeff[0] + tempY * tsCalCoeff[1] + tsCalCoeff[2];
-        tempY = tempX * tsCalCoeff[3] + tempY * tsCalCoeff[4] + tsCalCoeff[5];
-        // Need to flip Y because of text orientation
-        *y = tempY * -1 + 480;
+        *y = tempX * tsCalCoeff[3] + tempY * tsCalCoeff[4] + tsCalCoeff[5];
         return 1;
     }
     
@@ -85,20 +83,76 @@ int Disp_Get_Touch(uint16 *x, uint16 *y) {
 }
 
 /*
+    Performs the action requested by the user's touch, if any.
+*/
+void Disp_touchResponse(int x, int y) {
+    // Back is on all menus but home
+    if (curMenu != MENU_HOME && (BUTTON_HIT(x, y, 750, 0))) {
+        PC_PutString("Back button\r\n");
+        goToMenu(previous[curMenu], NULL);
+    }
+    
+    switch(curMenu) {
+        case MENU_HOME:
+            if (BUTTON_HIT(x, y, 0, 0)) {
+                PC_PutString("Settings button\r\n");
+                goToMenu(MENU_SETTINGS, NULL);
+            }
+            else if (BUTTON_HIT(x, y, 0, 165)) {
+                PC_PutString("Messages button\r\n");
+                goToMenu(MENU_MESSAGES, NULL);
+            }
+            else if (BUTTON_HIT(x, y, 0, 330)) {
+                PC_PutString("Info button\r\n");
+                goToMenu(MENU_INFO, NULL);
+            }
+            break;
+        case MENU_SETTINGS:
+            break;
+        case MENU_MESSAGES:
+            break;
+        case MENU_INFO:
+            break;
+        case MENU_NAME_EDIT:
+            break;
+        case MENU_CONVERSATION:
+            break;
+        case MENU_COMPOSE:
+            break;
+        case MENU_INFO_DETAILS:
+            break;
+        default:
+            PC_PutString("Invalid menu\r\n");
+            break;
+    }
+}
+
+/*
     Updates the map to show any changes in User positions.
     If there are no users, it prints an empty map with default
     max distance of 2.0 miles.
 */
-void Disp_Refresh_Screen(Position *my_pos, User *list) {
+void Disp_Refresh_Map() {
      // If you have more than 30 users, fix this
     double latDist[30], lonDist[30], totDist;
     int i, numInvalid = 0;
     double maxDist = 6.0/4; // So that the default is 2.0
     double transX, transY;
     char text[100];
-    User *u = list;
+    User *u = myself->users;
+    Position *my_pos = (Position*)&(myself->rmc.lat);
     
-    Disp_Clear_Map();
+    /* Switch to graphics mode and print the map */
+    Adafruit_RA8875_graphicsMode();
+    
+    // Clear the map area
+    Adafruit_RA8875_rectHelper(200, 0, 760, 479, RA8875_BLACK, 1);
+    
+    // Redraw the bullseye
+    Adafruit_RA8875_drawCircle(500, 240, 239, RA8875_WHITE);
+    Adafruit_RA8875_drawCircle(500, 240, 160, RA8875_WHITE);
+    Adafruit_RA8875_drawCircle(500, 240, 80, RA8875_WHITE);
+    Adafruit_RA8875_fillCircle(500, 240, 7, RA8875_WHITE);
     
     // Find all the distances
     for (i = 0; u; i++, u = u->next) {
@@ -132,7 +186,7 @@ void Disp_Refresh_Screen(Position *my_pos, User *list) {
     sprintf(text, "%0.1f mi", maxDist / 3);
     Adafruit_RA8875_textWrite(text, strlen(text));
     
-    if (!list) {
+    if (!myself->users) {
         Adafruit_RA8875_textEnlarge(0);
         Adafruit_RA8875_textColor(RA8875_RED, RA8875_BLACK);
         Adafruit_RA8875_textSetCursor(240, 160);
@@ -147,7 +201,7 @@ void Disp_Refresh_Screen(Position *my_pos, User *list) {
     
     Adafruit_RA8875_graphicsMode();
     // Paint all the users
-    for (u = list, i = 0; u; i++, u = u->next) {
+    for (u = myself->users, i = 0; u; i++, u = u->next) {
         if (u->pos.latDir != 0 && my_pos->latDir) {
             transX = 240 * latDist[i] / maxDist;
             transY = 240 * lonDist[i] / maxDist;
@@ -171,7 +225,8 @@ void Disp_Refresh_Screen(Position *my_pos, User *list) {
 /*
     Prints the time on the bottom-right corner of the screen.
 */
-void Disp_Update_Time(int utc) {
+void Disp_Update_Time() {
+    int utc = myself->rmc.utc;
     static int prevMin = -1;
     char text[13];
     int hours = utc / 10000;
@@ -209,40 +264,151 @@ void Disp_Update_Time(int utc) {
 }
 
 /*
-    Clears out and redraws the bullseye map.
+    Draws the Home screen
 */
-void Disp_Clear_Map() {
-    /* Switch to graphics mode and print the map */
+void drawHome() {
+    /* Print the buttons */
     Adafruit_RA8875_graphicsMode();
-    
-    // Clear the map area
-    Adafruit_RA8875_rectHelper(200, 0, 760, 479, RA8875_BLACK, 1);
-    
-    // Redraw the bullseye
-    Adafruit_RA8875_drawCircle(500, 240, 239, RA8875_WHITE);
-    Adafruit_RA8875_drawCircle(500, 240, 160, RA8875_WHITE);
-    Adafruit_RA8875_drawCircle(500, 240, 80, RA8875_WHITE);
-    Adafruit_RA8875_fillCircle(500, 240, 7, RA8875_WHITE);
-}
-
-/*
-    Draws a black background with the header to refresh the screen.
-*/
-void Disp_drawCanvas(char *name) {
-    char text[50];
-    
-    // With hardware accelleration this is instant
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
+    Adafruit_RA8875_fillRoundRect(0,   0, 50, 150, 5, RA8875_BLUE);
+    Adafruit_RA8875_fillRoundRect(0, 165, 50, 150, 5, RA8875_BLUE);
+    Adafruit_RA8875_fillRoundRect(0, 330, 50, 150, 5, RA8875_BLUE);
 
-    /* Switch to text mode and print the header */  
+    /* Print the title */  
     Adafruit_RA8875_textMode();
-    Adafruit_RA8875_setOrientation(1);
-    Adafruit_RA8875_textSetCursor(10, 120);
+    Adafruit_RA8875_textSetCursor(70, 120);
     Adafruit_RA8875_textTransparent(RA8875_CYAN);
     Adafruit_RA8875_textEnlarge(2);
     Adafruit_RA8875_textWrite("Pinpoint!", 9);
+    
+    /* Print the name */ 
     Adafruit_RA8875_textEnlarge(1);
     Adafruit_RA8875_textSetCursor(760, 10);
     Adafruit_RA8875_textTransparent(RA8875_YELLOW);
-    Adafruit_RA8875_textWrite(name, strlen(name));
+    Adafruit_RA8875_textWrite(myself->name, strlen(myself->name));
+    
+    /* Print the button labels */
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    Adafruit_RA8875_textSetCursor(7, 12);
+    Adafruit_RA8875_textWrite("Settings", 8);
+    Adafruit_RA8875_textSetCursor(7, 370);
+    Adafruit_RA8875_textWrite("Info", 4);
+    Adafruit_RA8875_textSetCursor(7, 177);
+    Adafruit_RA8875_textWrite("Messages", 8);
+    
+    /* Print the rest */
+    Disp_Refresh_Map();
+    Disp_Update_Time();
+}
+
+void drawSettings(){
+    /* Print the buttons */
+    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_fillScreen(RA8875_BLACK);
+    Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
+
+    /* Print the title */  
+    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textSetCursor(10, 130);
+    Adafruit_RA8875_textTransparent(RA8875_CYAN);
+    Adafruit_RA8875_textEnlarge(2);
+    Adafruit_RA8875_textWrite("Settings", 8);
+    
+    /* Print the button labels */
+    Adafruit_RA8875_textEnlarge(1);
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    Adafruit_RA8875_textSetCursor(757, 43);
+    Adafruit_RA8875_textWrite("Back", 4);
+}
+
+void drawMessages(){
+    /* Print the buttons */
+    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_fillScreen(RA8875_BLACK);
+    Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
+
+    /* Print the title */  
+    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textSetCursor(10, 130);
+    Adafruit_RA8875_textTransparent(RA8875_CYAN);
+    Adafruit_RA8875_textEnlarge(2);
+    Adafruit_RA8875_textWrite("Messages", 8);
+    
+    /* Print the button labels */
+    Adafruit_RA8875_textEnlarge(1);
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    Adafruit_RA8875_textSetCursor(757, 43);
+    Adafruit_RA8875_textWrite("Back", 4);
+}
+
+void drawInfo(){
+    /* Print the buttons */
+    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_fillScreen(RA8875_BLACK);
+    Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
+
+    /* Print the title */  
+    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textSetCursor(10, 115);
+    Adafruit_RA8875_textTransparent(RA8875_CYAN);
+    Adafruit_RA8875_textEnlarge(2);
+    Adafruit_RA8875_textWrite("Information", 11);
+    
+    /* Print the button labels */
+    Adafruit_RA8875_textEnlarge(1);
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    Adafruit_RA8875_textSetCursor(757, 43);
+    Adafruit_RA8875_textWrite("Back", 4);
+}
+
+void drawNameEdit(){
+}
+
+void drawConvo(User *user){
+}
+
+void drawCompose(User *user){
+}
+
+void drawDetails(void *user){
+}
+
+
+/*
+    Draws the requested menu and updates curMenu accordingly.
+    m is the destination menu.
+    arg is an optional argument needed for the menu.
+*/
+void goToMenu(Menu m, void *arg) {
+    curMenu = m;
+    
+    switch(m) {
+        case MENU_HOME:
+            drawHome();
+            break;
+        case MENU_SETTINGS:
+            drawSettings();
+            break;
+        case MENU_MESSAGES:
+            drawMessages();
+            break;
+        case MENU_INFO:
+            drawInfo();
+            break;
+        case MENU_NAME_EDIT:
+            drawNameEdit();
+            break;
+        case MENU_CONVERSATION:
+            drawConvo(arg);
+            break;
+        case MENU_COMPOSE:
+            drawCompose(arg);
+            break;
+        case MENU_INFO_DETAILS:
+            drawDetails(arg);
+            break;
+        default:
+            PC_PutString("Invalid menu\r\n");
+            break;
+    }
 }

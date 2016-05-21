@@ -29,14 +29,12 @@ uint8 xbReady = 0;
 CY_ISR_PROTO(TFT_REFRESH_INTER);
 uint8 refreshReady = 0;
 
-// List of the users we have seen on the network
-User *users = NULL;
-
 // Our own information
 Self me;
 
 int main() {
     uint16 x, y;
+    
 XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     // Initializing GPS UART Module
     GPS_CLK_Start();
@@ -66,7 +64,7 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     
     CyGlobalIntEnable;
     
-    Disp_FurtherInit(me.name);
+    Disp_FurtherInit(&me);
     GPS_FurtherInit();
 
     Display_Refresh_Timer_ReadStatusRegister();
@@ -83,23 +81,24 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
         if (xbReady) {
             PC_PutString("\tXBEE User\r\n");
             logXBdata();
-            Disp_Refresh_Screen((Position*)&(me.rmc.lat), users);
+            Disp_Refresh_Map();
             xbReady = 0;
         }
         if (refreshReady) {
-            PC_PutString("Refresh\r\n");
+            //PC_PutString("Refresh\r\n");
             Display_Refresh_Timer_ReadStatusRegister();
-            Disp_Update_Time((int)me.rmc.utc);
+            Disp_Update_Time();
             refreshReady = 0;
         }
         if (broadcastReady) {
-            PC_PutString("\t\tBroadcast\r\n");
+            //PC_PutString("\t\tBroadcast\r\n");
             broadcastPosition();
             broadcastReady = 0;
         }
         if (Disp_Get_Touch(&x, &y)) {
             Adafruit_RA8875_graphicsMode();
             Adafruit_RA8875_fillCircle(x, y, 5, RA8875_WHITE);
+            Disp_touchResponse(x, y);
         }
     }
 }
@@ -140,7 +139,7 @@ void logXBdata() {
     XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
     
     if (hdr->type == POSITION) {
-        updateUsers(&users, (User*)(xbUpdate + sizeof(XBEE_Header)));
+        updateUsers(&me.users, (User*)(xbUpdate + sizeof(XBEE_Header)));
     }
     else {
         // Currently not implemented ***
