@@ -72,6 +72,9 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     Broadcast_Timer_ReadStatusRegister();
     broadcastReady = 0;
     
+// **************
+me.users = calloc(sizeof(User), 1);
+    
     while(1) {
         if (gpsReady) {
             //PC_PutString("GPS\r\n");
@@ -99,6 +102,8 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
             Adafruit_RA8875_graphicsMode();
             Adafruit_RA8875_fillCircle(x, y, 5, RA8875_WHITE);
             Disp_touchResponse(x, y);
+            CyDelay(250);
+            Disp_Get_Touch(&x, &y);
         }
     }
 }

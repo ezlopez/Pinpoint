@@ -13,7 +13,7 @@ typedef struct Position {
 
 typedef struct Message {
     uint8 msgLen;
-    char *msg;
+    char  msg[256];
     uint8 sent;
     struct Message *next;
     struct Message *prev;
@@ -34,6 +34,7 @@ typedef struct User {
     float       groundCourse; // In degrees
     uint8       numMsgs;
     Message     *msgs;
+    Message     tempMsg;
     struct User *next;
 } User;
 

@@ -59,13 +59,14 @@ int  Disp_Get_Touch(uint16 *x, uint16 *y);
 void Disp_touchResponse(int x, int y);
 
 /* "Private" functions */
+void updateMessage(int x, int y);
 void drawHome();
 void drawSettings();
 void drawMessages();
 void drawInfo();
 void drawNameEdit();
 void drawConvo(User *user);
-void drawCompose(User *user);
+void drawCompose();
 void drawDetails(void *user);
 void goToMenu(Menu m, void *arg);
 #endif

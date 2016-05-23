@@ -93,7 +93,12 @@ void Disp_touchResponse(int x, int y) {
     // Back is on all menus but home
     if (curMenu != MENU_HOME && (BUTTON_HIT(x, y, 750, 0))) {
         PC_PutString("Back button\r\n");
-        goToMenu(previous[curMenu], NULL);
+        if (curMenu == MENU_COMPOSE)
+            goToMenu(MENU_CONVERSATION, curConvo);
+        else
+            goToMenu(previous[curMenu], NULL);
+            
+        return;
     }
     
     switch(curMenu) {
@@ -138,6 +143,7 @@ void Disp_touchResponse(int x, int y) {
             }
             break;
         case MENU_COMPOSE:
+            updateMessage(x, y);
             break;
         case MENU_INFO_DETAILS:
             if (BUTTON_HIT(x, y, 300, 0)) {
@@ -289,6 +295,94 @@ void Disp_Update_Time(int force) {
         sprintf(text, format, hours, minutes, meridiem);
         Adafruit_RA8875_textWrite(text, strlen(text));
         prevMin = minutes;
+    }
+}
+
+/*
+    Updates the compose menu after a touch response.
+    <x> and <y> are the screen coordinates for the touch.
+*/
+void updateMessage(int x, int y) {
+    Message *m = &curConvo->tempMsg;
+    static int cap = 0;
+    int key = -1;
+    const char keys[] = {'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
+                         'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
+                          0,  'z', 'x', 'c', 'v', 'b', 'n', 'm',  0 , ' '};
+    
+    // Find which key was pressed
+    if (x >= 588 && x <= 636) {
+        // First row
+        key = y / 48;
+    }
+    else if (x >= 642 && x <= 690 && y >= 24 && y <= 432) {
+        // Second row
+        key = (int)((y - 24) / 48) + 10;
+    }
+    else if (x >= 696 && x <= 744 && y >= 24 && y <= 432) {
+        // Third row
+        key = (int)((y - 24) / 48) + 19;
+    }
+    else if (x >= 750) {
+        // Bottom row
+        if (y >= 160 && y <= 320)
+            key = 28;
+        else if (y >= 330) {
+            Message *tmp = calloc(sizeof(Message), 1);
+            // Send the message
+Adafruit_RA8875_textMode();
+Adafruit_RA8875_textEnlarge(2);
+Adafruit_RA8875_textColor(RA8875_WHITE, RA8875_RED);
+Adafruit_RA8875_textSetCursor(0, 0);
+Adafruit_RA8875_textWrite("Implement sending", 17);
+CyDelay(1000);
+            // Copy message data to message list
+            strncpy(tmp->msg, m->msg, m->msgLen);
+            tmp->msgLen = m->msgLen;
+            tmp->sent = 1;
+            if (curConvo->msgs) {
+                tmp->next = curConvo->msgs;
+                tmp->prev = curConvo->msgs->prev;
+                curConvo->msgs->prev->next = tmp;
+                curConvo->msgs->prev = tmp;
+            }
+            else {
+                tmp->next = tmp->prev = tmp;
+                curConvo->msgs = tmp;
+            }
+            
+            // Clear the temp message and go back to the convo
+            m->msgLen = 0;
+            goToMenu(MENU_CONVERSATION, curConvo);
+        }
+    }
+    
+    if (key == 19) {
+        cap = !cap;
+    }
+    else if (key >= 0) {
+        int lineNum = (m->msgLen - 1) / 20;
+        
+        if (key == 27 && m->msgLen) {
+            --m->msgLen;
+            // Clear the last line
+            Adafruit_RA8875_graphicsMode();
+            Adafruit_RA8875_fillRect(lineNum * 48, 0, 48, 480, RA8875_BLACK);
+        }
+        else if (key != 27 && m->msgLen < 240) {
+            // Update the message
+            m->msg[m->msgLen++] = keys[key] - (cap && key != 28) * 32;
+        }
+            
+        // Write the last line
+        if (m->msgLen) {
+            int mod = m->msgLen % 20;
+            Adafruit_RA8875_textMode();
+            Adafruit_RA8875_textEnlarge(2);
+            Adafruit_RA8875_textTransparent(RA8875_WHITE);
+            Adafruit_RA8875_textSetCursor(lineNum * 48, 0);
+            Adafruit_RA8875_textWrite(m->msg + 20 * lineNum, mod ? mod : 20);
+        }
     }
 }
 
@@ -458,12 +552,16 @@ void drawConvo(User *user){
         
         // Display the messages.
         do {
-            // Draw the boxes around the text
-            // Implement me *******
+            if (m->sent)
+                Adafruit_RA8875_textColor(RA8875_WHITE, RA8875_GREEN);
+            else
+                Adafruit_RA8875_textColor(RA8875_WHITE, RA8875_BLUE);
             
-            // Write the text
             Adafruit_RA8875_textSetCursor(x, 0);
-            Adafruit_RA8875_textWrite(m->msg, m->msgLen);
+            if (m->msgLen)
+                Adafruit_RA8875_textWrite(m->msg, m->msgLen);
+            else
+                Adafruit_RA8875_textWrite(" ", 1);
             
             x += (int)(m->msgLen / CHAR_PER_LINE + 1) * PIX_PER_LINE;
             m = m->next;
@@ -479,7 +577,57 @@ void drawConvo(User *user){
     Adafruit_RA8875_textWrite("Compose", 7);
 }
 
-void drawCompose(User *user){
+void drawCompose(){
+    int x = 588, y = 3, i;
+    char str[26];
+    
+    /* Print the buttons */
+    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_fillScreen(RA8875_BLACK);
+    Adafruit_RA8875_fillRoundRect(582,   0, 218, 480, 5, RA8875_GREEN);
+    Adafruit_RA8875_fillRoundRect(750,   0,  50, 150, 5, RA8875_BLUE);
+    Adafruit_RA8875_fillRoundRect(750, 330,  50, 150, 5, RA8875_BLUE);
+    
+    /* Print the keyboard */
+    for (i = 0; i < 10; i++) {
+        Adafruit_RA8875_fillRoundRect(x, y, 48, 42, 5, RA8875_WHITE);
+        y += 48;
+    }
+    for (i = 0, x = 642, y = 24; i < 9; i++) {
+        Adafruit_RA8875_fillRoundRect(x, y, 48, 42, 5, RA8875_WHITE);
+        Adafruit_RA8875_fillRoundRect(x + 54, y, 48, 42, 5, RA8875_WHITE);
+        y += 48;
+    }
+    Adafruit_RA8875_fillRoundRect(750, 160, 50, 160, 5, RA8875_WHITE);
+    
+    /* Print the key labels */
+    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textEnlarge(1);
+    Adafruit_RA8875_textTransparent(RA8875_BLACK);
+    Adafruit_RA8875_textSetCursor(595, 0);
+    Adafruit_RA8875_textWrite(" Q  W  E  R  T  Y  U  I  O  P", 29);
+    Adafruit_RA8875_textSetCursor(649, 38);
+    Adafruit_RA8875_textWrite("A  S  D  F  G  H  J  K  L", 25);
+    Adafruit_RA8875_textSetCursor(703, 38);
+    sprintf(str, "%c  Z  X  C  V  B  N  M  %c", 30, 17);
+    Adafruit_RA8875_textWrite(str, 25);
+    Adafruit_RA8875_textSetCursor(757, 198);
+    Adafruit_RA8875_textWrite("Space", 5);
+    
+    /* Print the temp message */
+    if (curConvo->tempMsg.msgLen) {
+        Adafruit_RA8875_textEnlarge(2);
+        Adafruit_RA8875_textTransparent(RA8875_WHITE);
+        Adafruit_RA8875_textSetCursor(0, 0);
+        Adafruit_RA8875_textWrite(curConvo->tempMsg.msg, curConvo->tempMsg.msgLen);
+    }
+    
+    /* Print the button labels */
+    Adafruit_RA8875_textEnlarge(1);
+    Adafruit_RA8875_textSetCursor(757, 43);
+    Adafruit_RA8875_textWrite("Back", 4);
+    Adafruit_RA8875_textSetCursor(757, 373);
+    Adafruit_RA8875_textWrite("Send", 4);
 }
 
 void drawDetails(void *user){
@@ -591,7 +739,7 @@ void goToMenu(Menu m, void *arg) {
             drawConvo(arg);
             break;
         case MENU_COMPOSE:
-            drawCompose(arg);
+            drawCompose();
             break;
         case MENU_INFO_DETAILS:
             drawDetails(arg);
