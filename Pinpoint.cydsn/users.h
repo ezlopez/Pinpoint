@@ -1,5 +1,6 @@
 #pragma pack(1)
 #include <cytypes.h>
+#include <nmea.h>
 
 #ifndef __USERS_H
 #define __USERS_H
@@ -13,14 +14,14 @@ typedef struct Position {
 
 typedef struct Message {
     uint8 msgLen;
-    char  msg[256];
+    char  msg[255];
     uint8 sent;
     struct Message *next;
     struct Message *prev;
 } Message;
 
 typedef struct User {
-    uint64      uniqueID;
+    uint32      uniqueID;
     char        name[20];
     float64      utc;
     Position    pos;
@@ -37,6 +38,17 @@ typedef struct User {
     Message     tempMsg;
     struct User *next;
 } User;
+
+typedef struct Self {
+    char    name[20];
+    uint32  id;
+    GGA_Str gga;
+    GSA_Str gsa;
+    GSV_Str gsv;
+    RMC_Str rmc;
+    VTG_Str vtg;
+    User *users; // Users we have seen on the network
+} Self;
 
 void updateUsers(User **list, User *update);
 User *findUser(User *list, uint64 id);

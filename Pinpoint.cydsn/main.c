@@ -3,7 +3,11 @@
 #include "cyapicallbacks.h"
 #include "users.h"
 #include "display.h"
-#include "main.h"
+#include "xbee.h"
+#include "nmea.h"
+#include "users.h"
+
+void logGPSdata();
 
 // GPS RX buffer variables
 uint8 gpsBufLen = 0;
@@ -21,8 +25,8 @@ CY_ISR_PROTO(BRDCST_LOC);
 CY_ISR_PROTO(XBEE_RCV);
 uint8 broadcastReady = 0;
 uint16 xbBufLen = 0;
-uint8  xbBuffer[200];
-uint8  xbUpdate[200];
+uint8  xbBuffer[300];
+uint8  xbUpdate[300];
 uint8 xbReady = 0;
 
 // TFT display variables
@@ -35,7 +39,6 @@ Self me;
 int main() {
     uint16 x, y;
     
-XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     // Initializing GPS UART Module
     GPS_CLK_Start();
     GPS_Start();
@@ -74,6 +77,8 @@ XBEE_Header *dr = (XBEE_Header *)xbUpdate;
     
 // **************
 me.users = calloc(sizeof(User), 1);
+memcpy(me.users->name, "Beth", 4);
+me.users->uniqueID = 42069;
     
     while(1) {
         if (gpsReady) {
@@ -83,7 +88,7 @@ me.users = calloc(sizeof(User), 1);
         }
         if (xbReady) {
             PC_PutString("\tXBEE User\r\n");
-            logXBdata();
+            logXBdata(&me, xbUpdate);
             Disp_Refresh_Map();
             xbReady = 0;
         }
@@ -95,7 +100,7 @@ me.users = calloc(sizeof(User), 1);
         }
         if (broadcastReady) {
             //PC_PutString("\t\tBroadcast\r\n");
-            broadcastPosition();
+            broadcastPosition(&me);
             broadcastReady = 0;
         }
         if (Disp_Get_Touch(&x, &y)) {
@@ -134,46 +139,6 @@ void logGPSdata() {
             break;
     }
     CyGlobalIntEnable;
-}
-
-/*
-    Parses the message and enacts the appropriate action depending
-    on the type of data in the message.
-*/
-void logXBdata() {
-    XBEE_Header *hdr = (XBEE_Header *)xbUpdate;
-    
-    if (hdr->type == POSITION) {
-        updateUsers(&me.users, (User*)(xbUpdate + sizeof(XBEE_Header)));
-    }
-    else {
-        // Currently not implemented ***
-        PC_PutString("Incorrect XB message type\r\n");
-    }
-}
-
-void broadcastPosition() {
-    uint8 message[sizeof(XBEE_Header) + sizeof(User)];
-    XBEE_Header *hdr = (XBEE_Header*)message;
-    User *u = (User*)(message + sizeof(XBEE_Header));
-    
-    Broadcast_Timer_ReadStatusRegister(); // Needed to clear interrupt output
-    
-    // Filling the header info
-    hdr->destID = 0;
-    hdr->type = POSITION;
-    hdr->dataLen = sizeof(User);
-    
-    // Fill the user info
-    u->uniqueID = me.id;
-    strcpy(u->name, me.name);
-    u->utc = me.rmc.utc;
-    memcpy(&(u->pos), &(me.rmc.lat), sizeof(Position)); // Works because packed
-    u->pdop = me.gsa.pdop;
-    u->groundSpeed = me.rmc.groundSpeed; // In knots
-    u->groundCourse = me.rmc.groundCourse; // In degrees
-
-    XB_PutArray(message, sizeof(XBEE_Header) + sizeof(User));
 }
 
 void GPS_RXISR_ExitCallback() {
@@ -224,9 +189,12 @@ CY_ISR(XBEE_RCV){
         }
     }
     
-    while(xbBufLen < sizeof(XBEE_Header) + hdr->dataLen) {
+    while(xbBufLen < sizeof(XBEE_Header) + XBEE_STR_SIZE[hdr->type]) {
         if (XB_GetRxBufferSize()) {
-            xbBuffer[xbBufLen++] = XB_ReadRxData();
+            if (hdr->destID == 0 || hdr->destID == me.id)
+                xbBuffer[xbBufLen++] = XB_ReadRxData();
+            else
+                XB_ReadRxData();
         }
         else {
             CyGlobalIntEnable;
@@ -235,8 +203,10 @@ CY_ISR(XBEE_RCV){
     }
     
     // Transfering data to the second buffer
-    xbReady = 1;
-    memcpy(xbUpdate, xbBuffer, xbBufLen);
+    if (hdr->destID == 0 || hdr->destID == me.id) {
+        xbReady = 1;
+        memcpy(xbUpdate, xbBuffer, xbBufLen);
+    }
     xbBufLen = 0;
 
     CyGlobalIntEnable;

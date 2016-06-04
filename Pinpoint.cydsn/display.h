@@ -3,7 +3,7 @@
 #include "Adafruit_RA8875.h"
 #include "users.h"
 #include "nmea.h"
-#include "main.h"
+#include "xbee.h"
 
 // Since all buttons are the same size I can use this macro
 #define BUTTON_HIT(_T_X, _T_Y, _B_X, _B_Y)\
@@ -60,6 +60,7 @@ void Disp_touchResponse(int x, int y);
 
 /* "Private" functions */
 void updateMessage(int x, int y);
+void updateNameEdit(int x, int y);
 void drawHome();
 void drawSettings();
 void drawMessages();
