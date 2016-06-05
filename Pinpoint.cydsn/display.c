@@ -5,8 +5,10 @@
     Turns all functions of the display on, runs through the touch-screen
     callibration with the user, and draws the home screen.
 */
-void Disp_FurtherInit(Self *me) {
+void Disp_FurtherInit(Self *me, uint16 *calX, uint16 *calY) {
     int i;
+    GPS_Rate = 1;
+    XB_Rate = 0;
     
     if (!Adafruit_RA8875_begin()) {
         PC_PutString("Failed to init TFT.\r\n");
@@ -28,7 +30,7 @@ void Disp_FurtherInit(Self *me) {
     int testX[3] = {700, 135, 452};
     int testY[3] = {400, 210, 108};
     
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     Adafruit_RA8875_touchEnable(1);
     for (i = 0; i < 3; i++) {
         Adafruit_RA8875_fillScreen(RA8875_BLACK);
@@ -40,8 +42,10 @@ void Disp_FurtherInit(Self *me) {
         Adafruit_RA8875_touchRead(z + 3 * i, 1 + z + 3 * i);
         CyDelay(300);
     }
+    *calX = z[6];
+    *calY = z[7];
     if (Adafruit_RA8875_touched())
-        Adafruit_RA8875_touchRead(NULL, NULL);
+        Adafruit_RA8875_touchRead(calX, calY);
             
     double z_inv[9] = {z[4]*z[8] - z[5]*z[7], z[2]*z[7] - z[1]*z[8], z[1]*z[5] - z[2]*z[4],
                        z[5]*z[6] - z[3]*z[8], z[0]*z[8] - z[2]*z[6], z[2]*z[3] - z[0]*z[5],
@@ -121,6 +125,26 @@ void Disp_touchResponse(int x, int y) {
                 PC_PutString("Edit button\r\n");
                 goToMenu(MENU_NAME_EDIT, NULL);
             }
+            else if (x >= 370 && x < 420) {
+                PC_PutString("GPS rate\r\n");
+                if (BUTTON_HIT(x, y, 370, 5))
+                    GPS_Rate = 0;
+                else if (BUTTON_HIT(x, y, 370, 165))
+                    GPS_Rate = 1;
+                else if (BUTTON_HIT(x, y, 370, 325))
+                    GPS_Rate = 2;
+                drawSettingsButtons();
+            }
+            else if (x >= 520 && x < 570) {
+                PC_PutString("XBee rate\r\n");
+                if (BUTTON_HIT(x, y, 520, 5))
+                    XB_Rate = 0;
+                else if (BUTTON_HIT(x, y, 520, 165))
+                    XB_Rate = 1;
+                else if (BUTTON_HIT(x, y, 520, 325))
+                    XB_Rate = 2;
+                drawSettingsButtons();
+            }
             break;
         case MENU_MESSAGES:
             listInd = (LIST_POS(x, 100, 50, 13));
@@ -151,7 +175,7 @@ void Disp_touchResponse(int x, int y) {
             updateMessage(x, y);
             break;
         case MENU_INFO_DETAILS:
-            if (BUTTON_HIT(x, y, 300, 0)) {
+            if (BUTTON_HIT(x, y, 400, 0)) {
                 PC_PutString("Messages button\r\n");
                 if (curDetails == myself)
                     goToMenu(MENU_MESSAGES, NULL);
@@ -172,19 +196,19 @@ void Disp_touchResponse(int x, int y) {
 */
 void Disp_Refresh_Map() {
      // If you have more than 30 users, fix this
-    double latDist[30], lonDist[30], totDist;
+    float latDist[30], lonDist[30], totDist;
     int i, numInvalid = 0;
-    double maxDist = 6.0/4; // So that the default is 2.0
+    float maxDist = 3.0/8; // So that the default is 0.5 miles
     double transX, transY;
     char text[100];
     User *u = myself->users;
     Position *my_pos = (Position*)&(myself->rmc.lat);
     
     /* Switch to graphics mode and print the map */
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     
     // Clear the map area
-    Adafruit_RA8875_rectHelper(200, 0, 760, 479, RA8875_BLACK, 1);
+    Adafruit_RA8875_rectHelper(220, 0, 760, 479, RA8875_BLACK, 1);
     
     // Redraw the bullseye
     Adafruit_RA8875_drawCircle(500, 240, 239, RA8875_WHITE);
@@ -196,10 +220,7 @@ void Disp_Refresh_Map() {
     for (i = 0; u; i++, u = u->next) {
         // Only calculate if ours and the user's positions are valid
         if (u->pos.latDir && my_pos->latDir) {
-            latDist[i] = 3959 * M_PI / 180 * (my_pos->lat - u->pos.lat);
-            lonDist[i] = 3959 * M_PI / 180 * (my_pos->lon - u->pos.lon)
-             * cos(M_PI / 180 * (my_pos->lat + u->pos.lat) / 2.0);
-            totDist = sqrt(latDist[i] * latDist[i] + lonDist[i] * lonDist[i]);
+            totDist = distance(my_pos->lat, my_pos->lon, u->pos.lat, u->pos.lon, latDist + i, lonDist + i);
             if (totDist > maxDist)
                 maxDist = totDist;
         }
@@ -208,7 +229,7 @@ void Disp_Refresh_Map() {
     maxDist *= 4.0 / 3;
     
     // Print the ring labels
-    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textMode(); CyDelay(20);
     Adafruit_RA8875_textEnlarge(0);
     Adafruit_RA8875_textColor(RA8875_WHITE, RA8875_BLACK);
     
@@ -237,7 +258,7 @@ void Disp_Refresh_Map() {
         Adafruit_RA8875_textWrite("Waiting for location...", 23);
     }
     
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     // Paint all the users
     for (u = myself->users, i = 0; u; i++, u = u->next) {
         if (u->pos.latDir != 0 && my_pos->latDir) {
@@ -250,7 +271,7 @@ void Disp_Refresh_Map() {
     }
     
     if (numInvalid) {
-        Adafruit_RA8875_textMode();
+        Adafruit_RA8875_textMode(); CyDelay(20);
         Adafruit_RA8875_textSetCursor(220, 150);
         Adafruit_RA8875_textEnlarge(0);
         Adafruit_RA8875_textColor(RA8875_RED, RA8875_BLACK);
@@ -293,7 +314,7 @@ void Disp_Update_Time(int force) {
         else
             format = "%d:%02d %s";
     
-        Adafruit_RA8875_textMode();
+        Adafruit_RA8875_textMode(); CyDelay(20);
         Adafruit_RA8875_textEnlarge(1);
         Adafruit_RA8875_textSetCursor(760, 340);
         Adafruit_RA8875_textColor(RA8875_YELLOW, RA8875_BLACK);
@@ -347,19 +368,21 @@ void updateMessage(int x, int y) {
         
         if (key == 27 && m->msgLen) {
             --m->msgLen;
+            m->msg[m->msgLen] = 0;
             // Clear the last line
-            Adafruit_RA8875_graphicsMode();
+            Adafruit_RA8875_graphicsMode(); CyDelay(20);
             Adafruit_RA8875_fillRect(lineNum * 48, 0, 48, 480, RA8875_BLACK);
         }
         else if (key != 27 && m->msgLen < 240) {
             // Update the message
             m->msg[m->msgLen++] = keys[key] - (cap && key != 28) * 32;
+            m->msg[m->msgLen] = 0;
         }
             
         // Write the last line
         if (m->msgLen) {
             int mod = m->msgLen % 20;
-            Adafruit_RA8875_textMode();
+            Adafruit_RA8875_textMode(); CyDelay(20);
             Adafruit_RA8875_textEnlarge(2);
             Adafruit_RA8875_textTransparent(RA8875_WHITE);
             Adafruit_RA8875_textSetCursor(lineNum * 48, 0);
@@ -411,10 +434,10 @@ void updateNameEdit(int x, int y) {
             name[len] = 0;
         }
         
-        Adafruit_RA8875_graphicsMode();
+        Adafruit_RA8875_graphicsMode(); CyDelay(20);
         Adafruit_RA8875_rectHelper(0, 0, 100, 480, RA8875_BLACK, 1);
         
-        Adafruit_RA8875_textMode();
+        Adafruit_RA8875_textMode(); CyDelay(20);
         Adafruit_RA8875_textEnlarge(2);
         Adafruit_RA8875_textTransparent(RA8875_WHITE);
         Adafruit_RA8875_textSetCursor(0, 0);
@@ -428,14 +451,14 @@ void updateNameEdit(int x, int y) {
 */
 void drawHome() {
     /* Print the buttons */
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
     Adafruit_RA8875_fillRoundRect(0,   0, 50, 150, 5, RA8875_BLUE);
     Adafruit_RA8875_fillRoundRect(0, 165, 50, 150, 5, RA8875_BLUE);
     Adafruit_RA8875_fillRoundRect(0, 330, 50, 150, 5, RA8875_BLUE);
 
     /* Print the title */  
-    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textMode(); CyDelay(20);
     Adafruit_RA8875_textSetCursor(70, 120);
     Adafruit_RA8875_textTransparent(RA8875_CYAN);
     Adafruit_RA8875_textEnlarge(2);
@@ -465,7 +488,7 @@ void drawKeyboard() {
     int i, x = 588, y = 3;
     char str[30];
     
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     
     /* Print the keyboard */
     for (i = 0; i < 10; i++) {
@@ -480,7 +503,7 @@ void drawKeyboard() {
     Adafruit_RA8875_fillRoundRect(750, 160, 50, 160, 5, RA8875_WHITE);
     
     /* Print the key labels */
-    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textMode(); CyDelay(20);
     Adafruit_RA8875_textEnlarge(1);
     Adafruit_RA8875_textTransparent(RA8875_BLACK);
     Adafruit_RA8875_textSetCursor(595, 0);
@@ -494,15 +517,48 @@ void drawKeyboard() {
     Adafruit_RA8875_textWrite("Space", 5);
 }
 
+void drawSettingsButtons() {
+    // Print all the buttons
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
+    Adafruit_RA8875_fillRoundRect(370,   5, 50, 150, 5, RA8875_GRAY);
+    Adafruit_RA8875_fillRoundRect(370, 165, 50, 150, 5, RA8875_GRAY);
+    Adafruit_RA8875_fillRoundRect(370, 325, 50, 150, 5, RA8875_GRAY);
+    Adafruit_RA8875_fillRoundRect(520,   5, 50, 150, 5, RA8875_GRAY);
+    Adafruit_RA8875_fillRoundRect(520, 165, 50, 150, 5, RA8875_GRAY);
+    Adafruit_RA8875_fillRoundRect(520, 325, 50, 150, 5, RA8875_GRAY);
+    
+    // Print the active buttons
+    Adafruit_RA8875_fillRoundRect(370, 5 + (GPS_Rate * 160), 50, 150, 5, RA8875_BLUE);
+    Adafruit_RA8875_fillRoundRect(520, 5 + (XB_Rate * 160),  50, 150, 5, RA8875_BLUE);
+    
+    // Print the labels
+    Adafruit_RA8875_textMode(); CyDelay(20);
+    Adafruit_RA8875_textEnlarge(1);
+    Adafruit_RA8875_textTransparent(RA8875_WHITE);
+    Adafruit_RA8875_textSetCursor(377, 30);
+    Adafruit_RA8875_textWrite("1/3 Hz", 6);
+    Adafruit_RA8875_textSetCursor(377, 190);
+    Adafruit_RA8875_textWrite("1/2 Hz", 6);
+    Adafruit_RA8875_textSetCursor(377, 368);
+    Adafruit_RA8875_textWrite("1 Hz", 4);
+    Adafruit_RA8875_textSetCursor(527, 30);
+    Adafruit_RA8875_textWrite("1/3 Hz", 6);
+    Adafruit_RA8875_textSetCursor(527, 190);
+    Adafruit_RA8875_textWrite("1/2 Hz", 6);
+    Adafruit_RA8875_textSetCursor(527, 368);
+    Adafruit_RA8875_textWrite("1 Hz", 4);
+}
+
 void drawSettings(){
     /* Print the buttons */
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
     Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
-    Adafruit_RA8875_fillRoundRect(200,   0, 50, 150, 5, RA8875_BLUE);
+    Adafruit_RA8875_fillRoundRect(200,   5, 50, 150, 5, RA8875_BLUE);
+    drawSettingsButtons();
 
     /* Print the title */  
-    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textMode(); CyDelay(20);
     Adafruit_RA8875_textSetCursor(10, 130);
     Adafruit_RA8875_textTransparent(RA8875_CYAN);
     Adafruit_RA8875_textEnlarge(2);
@@ -522,7 +578,7 @@ void drawSettings(){
     /* Print the button labels */
     Adafruit_RA8875_textEnlarge(1);
     Adafruit_RA8875_textTransparent(RA8875_WHITE);
-    Adafruit_RA8875_textSetCursor(207, 43);
+    Adafruit_RA8875_textSetCursor(207, 48);
     Adafruit_RA8875_textWrite("Edit", 4);
     Adafruit_RA8875_textSetCursor(757, 43);
     Adafruit_RA8875_textWrite("Back", 4);
@@ -534,12 +590,12 @@ void drawMessages(){
     char str[50];
     
     /* Print the buttons */
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
     Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
 
     /* Print the title */  
-    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textMode(); CyDelay(20);
     Adafruit_RA8875_textSetCursor(10, 130);
     Adafruit_RA8875_textTransparent(RA8875_CYAN);
     Adafruit_RA8875_textEnlarge(2);
@@ -567,12 +623,12 @@ void drawInfo(){
     User *u;
     int x = 150;
     /* Print the buttons */
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
     Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
 
     /* Print the title */  
-    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textMode(); CyDelay(20);
     Adafruit_RA8875_textSetCursor(10, 95);
     Adafruit_RA8875_textTransparent(RA8875_CYAN);
     Adafruit_RA8875_textEnlarge(2);
@@ -599,7 +655,7 @@ void drawInfo(){
 void drawNameEdit(){
     
     /* Print the buttons */
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
     Adafruit_RA8875_fillRoundRect(582,   0, 218, 480, 5, RA8875_GREEN);
     Adafruit_RA8875_fillRoundRect(750,   0,  50, 150, 5, RA8875_BLUE);
@@ -625,13 +681,13 @@ void drawConvo(User *user){
     curConvo = user;
     
     /* Print the buttons */
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
     Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
     Adafruit_RA8875_fillRoundRect(750, 330, 50, 150, 5, RA8875_BLUE);
 
     /* Print the title */  
-    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textMode(); CyDelay(20);
     Adafruit_RA8875_textTransparent(RA8875_CYAN);
     Adafruit_RA8875_textEnlarge(2);
     Adafruit_RA8875_textSetCursor(10, 95);
@@ -683,7 +739,7 @@ void drawConvo(User *user){
 void drawCompose(){
     
     /* Print the buttons */
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
     Adafruit_RA8875_fillRoundRect(582,   0, 218, 480, 5, RA8875_GREEN);
     Adafruit_RA8875_fillRoundRect(750,   0,  50, 150, 5, RA8875_BLUE);
@@ -713,13 +769,13 @@ void drawDetails(void *user){
     curDetails = user;
     
     /* Print the buttons */
-    Adafruit_RA8875_graphicsMode();
+    Adafruit_RA8875_graphicsMode(); CyDelay(20);
     Adafruit_RA8875_fillScreen(RA8875_BLACK);
-    Adafruit_RA8875_fillRoundRect(300,   0, 50, 150, 5, RA8875_BLUE);
+    Adafruit_RA8875_fillRoundRect(400,   0, 50, 150, 5, RA8875_BLUE);
     Adafruit_RA8875_fillRoundRect(750,   0, 50, 150, 5, RA8875_BLUE);
 
     /* Print the title */  
-    Adafruit_RA8875_textMode();
+    Adafruit_RA8875_textMode(); CyDelay(20);
     Adafruit_RA8875_textSetCursor(10, 95);
     Adafruit_RA8875_textTransparent(RA8875_CYAN);
     Adafruit_RA8875_textEnlarge(2);
@@ -741,7 +797,6 @@ void drawDetails(void *user){
         if (myself->rmc.latDir) {
             Adafruit_RA8875_textWrite("Position:", 9);
             Adafruit_RA8875_textSetCursor(250, 10);
-            Adafruit_RA8875_textEnlarge(1);
             sprintf(str, "%0.4f, %0.4f", myself->rmc.lat, myself->rmc.lon);
             Adafruit_RA8875_textWrite(str, strlen(str));
         }
@@ -765,11 +820,23 @@ void drawDetails(void *user){
         if (u->pos.latDir) {
             Adafruit_RA8875_textWrite("Position:", 9);
             Adafruit_RA8875_textSetCursor(250, 10);
-            sprintf(str, "%0.4f%c, %0.4f%c", u->pos.lat, 248, u->pos.lon, 248);
+            sprintf(str, "%0.4f, %0.4f", u->pos.lat, u->pos.lon);
             Adafruit_RA8875_textWrite(str, strlen(str));
+            Adafruit_RA8875_textSetCursor(300, 10);
+            Adafruit_RA8875_textWrite("Distance:", 9);
+            Adafruit_RA8875_textSetCursor(350, 10);
+            if (myself->rmc.latDir) {
+                sprintf(str, "%0.2f miles", distance(u->pos.lat, u->pos.lon, myself->rmc.lat, 
+                 myself->rmc.lon, NULL, NULL));
+                Adafruit_RA8875_textWrite(str, strlen(str));
+            }
+            else
+                Adafruit_RA8875_textWrite("Unknown", 7);
         }
         else {
             Adafruit_RA8875_textWrite("Unknown position", 16);
+            Adafruit_RA8875_textSetCursor(250, 10);
+            Adafruit_RA8875_textWrite("Unknown distance", 16);
         }
     }
     else {
@@ -783,7 +850,7 @@ void drawDetails(void *user){
     /* Print the button labels */
     Adafruit_RA8875_textEnlarge(1);
     Adafruit_RA8875_textTransparent(RA8875_WHITE);
-    Adafruit_RA8875_textSetCursor(307, 12);
+    Adafruit_RA8875_textSetCursor(407, 12);
     Adafruit_RA8875_textWrite("Messages", 8);
     Adafruit_RA8875_textSetCursor(757, 43);
     Adafruit_RA8875_textWrite("Back", 4);

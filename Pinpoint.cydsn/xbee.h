@@ -1,9 +1,12 @@
 #pragma pack(1)
 
-#include <users.h>
-
 #ifndef __XBEE_H__
 #define __XBEE_H__
+
+#include <users.h>
+#include <Adafruit_RA8875.h>
+#include "display.h"
+    
 typedef enum {POSITION, MESSAGE, PROBE_REQ} XB_Payload_Type;
 
 typedef struct XBEE_Header {

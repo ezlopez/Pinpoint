@@ -29,11 +29,11 @@
     Ezequiel Lopez - 04/22/16
 */
 
-#include <cytypes.h>
-#include "gfxfont.h"
-
 #ifndef _ADAFRUIT_RA8875_H
 #define _ADAFRUIT_RA8875_H
+    
+#include <cytypes.h>
+#include "gfxfont.h"
 
 // Touch screen cal structs
 typedef struct Point {
@@ -147,6 +147,7 @@ void Adafruit_RA8875_write(uint8_t c);
 #define	RA8875_RED             0xF800
 #define	RA8875_GREEN           0x07E0
 #define RA8875_CYAN            0x07FF
+#define RA8875_GRAY            0x7BEF
 #define RA8875_MAGENTA         0xF81F
 #define RA8875_YELLOW          0xFFE0  
 #define RA8875_WHITE           0xFFFF

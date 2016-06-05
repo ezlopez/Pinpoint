@@ -1102,7 +1102,6 @@ void  Adafruit_RA8875_writeReg(uint8_t reg, uint8_t val) {
 */
 /**************************************************************************/
 uint8_t  Adafruit_RA8875_readReg(uint8_t reg) {
-    uint8_t dat;
     Adafruit_RA8875_writeCommand(reg);
     CyDelay(1);
     return Adafruit_RA8875_readData();
@@ -1251,32 +1250,6 @@ void Adafruit_RA8875_fillCircleHelper(int16_t x0, int16_t y0, int16_t r, uint8_t
       Adafruit_RA8875_drawFastVLine(x0-y, y0-x, 2*x+1+delta, color);
     }
   }
-}
-
-// Draw a 1-bit image (bitmap) at the specified (x,y) position from the
-// provided bitmap buffer (must be PROGMEM memory) using the specified
-// foreground color (unset bits are transparent).
-void Adafruit_RA8875_drawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
-
-  int16_t i, j, byteWidth = (w + 7) / 8;
-//  uint8_t byte = 0;
-//
-//  for(j=0; j<h; j++) {
-//    for(i=0; i<w; i++) {
-//      if(i & 7) 
-//            byte <<= 1;
-//      else      
-//            byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
-//      if(byte & 0x80)
-//            Adafruit_RA8875_drawPixel(x+i, y+j, color);
-//    }
-//  }
-    
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-            Adafruit_RA8875_drawPixel(x+i, y+j, bitmap[i + (w * j)]);
-        }
-    }
 }
 
 // Draw a character

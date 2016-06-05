@@ -50,7 +50,7 @@ typedef struct Self {
     User *users; // Users we have seen on the network
 } Self;
 
-void updateUsers(User **list, User *update);
-User *findUser(User *list, uint64 id);
+User *findUser(User **list, uint64 id, int createNew);
 User *findUserAtPos(User *list, unsigned int pos);
+void addMessage(User *user, char *msg, int sent);
 #endif

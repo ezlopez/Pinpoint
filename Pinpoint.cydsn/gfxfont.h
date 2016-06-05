@@ -9,10 +9,10 @@
     Ezequiel Lopez - 04/22/16
 */
 
-#include <cytypes.h>
-
 #ifndef _GFXFONT_H_
 #define _GFXFONT_H_
+    
+#include <cytypes.h>
 
 typedef struct { // Data stored PER GLYPH
 	uint16_t bitmapOffset;     // Pointer into GFXfont->bitmap

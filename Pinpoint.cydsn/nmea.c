@@ -192,3 +192,14 @@ double DDMtoDD(double coord) {
     
     return degrees + (minutes / 60.0);
 }
+
+/*
+    
+*/
+float distance(float64 destLat, float64 destLon, float64 curLat, float64 curLon,
+ float *latDist, float *lonDist) {
+    *latDist = 3959 * M_PI / 180 * (destLat - curLat);
+    *lonDist = 3959 * M_PI / 180 * (destLon - curLon)
+             * cos(M_PI / 180 * (destLat + curLat) / 2.0);
+    return sqrt(*latDist * *latDist + *lonDist * *lonDist);
+}

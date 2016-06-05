@@ -1,15 +1,16 @@
 #pragma pack(1)
 
+#ifndef __NMEA_H
+#define __NMEA_H
+
 #include <project.h>
+#include <math.h>
 #include <cytypes.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#ifndef __NMEA_H
-#define __NMEA_H
 
 typedef enum {GGA, GSA, GSV, RMC, VTG, INVALID} nmea_type;
 
@@ -77,15 +78,15 @@ typedef struct GSV_Str {
 } GSV_Str;
 
 typedef struct RMC_Str {
-   float64  utc;
+   float64 utc;
    char    status; // A = valid, V = not valid
-   float64  lat;
+   float64 lat;
    char    latDir; // N/S
-   float64  lon;
+   float64 lon;
    char    lonDir; // E/W
    float   groundSpeed; // In knots
    float   groundCourse; // In degrees
-   uint32_t date;
+   uint    date;
    float   magVar; // Degrees
    char    magVarDir; // E/W
    char    mode; // A = autonomous, D = differential, E = estimated
@@ -103,4 +104,6 @@ void GPS_FurtherInit();
 nmea_type parseNMEA(char *sentence, void *strStruct);
 int validateChecksum(char *sentence);
 double DDMtoDD(double coord);
+float distance(float64 destLat, float64 destLon, float64 curLat, float64 curLon,
+ float *latDist, float *lonDist);
 #endif

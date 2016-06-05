@@ -6,30 +6,36 @@
 */
 void logXBdata(Self *me, void *data) {
     XBEE_Header *hdr = data;
-    User *u;
-    
-    /* Find the user */
-    //**********************************
+    User *u = findUser(&me->users, hdr->srcID, 1);
     
     /* Copy the name */
-    //**********************************
+    memcpy(u->name, hdr->name, 20);
     
     if (hdr->type == POSITION) {
         XBEE_Position *pos = (XBEE_Position*)(hdr + 1);
+        // Update the position
         u->utc = pos->utc;
         u->pos = pos->pos;
+        Disp_Refresh_Map();
     }
     else if (hdr->type == MESSAGE) {
         XBEE_Message *msg = (XBEE_Message*)(hdr + 1);
-        
-        // Write a newMessage function inside of user and replace inside display
-        // Use that here too ***********************
+        // Add the message to the user's list
+        addMessage(u, msg->msg, 0);
+        Adafruit_RA8875_textMode();
+        Adafruit_RA8875_textEnlarge(2);
+        Adafruit_RA8875_textSetCursor(170, 100);
+        Adafruit_RA8875_textColor(RA8875_RED, RA8875_BLACK);
+        Adafruit_RA8875_textWrite("New Message", 11);
     }
 }
 
 void broadcastPosition(Self *me) {
     XBEE_Header hdr;
     XBEE_Position pos;
+    
+    // Clear out the timer interrupt
+    Broadcast_Timer_ReadStatusRegister();
     
     // Fill in the header
     hdr.destID = 0;
@@ -42,44 +48,33 @@ void broadcastPosition(Self *me) {
     memcpy(&pos.pos, &me->rmc.lat, sizeof(Position));
     
     // Send the data
-    XB_PutArray((uint8*)&hdr, sizeof(hdr));
-    XB_PutArray((uint8*)&pos, sizeof(pos));
+    XB_PutArray((uint8*)&hdr, sizeof(XBEE_Header));
+    XB_PutArray((uint8*)&pos, sizeof(XBEE_Position));
+    XB_PutArray((uint8*)"***", 3);
 }
 
 void sendMessage(Self *me, User *dest){
     XBEE_Header hdr;
     XBEE_Message msg;
-    Message *tmp = calloc(sizeof(Message), 1);
-            
-    // Copy temp message data to message list
-    strncpy(tmp->msg, dest->tempMsg.msg, dest->tempMsg.msgLen);
-    tmp->msgLen = dest->tempMsg.msgLen;
-    tmp->sent = 1;
-    if (dest->msgs) {
-        tmp->next = dest->msgs;
-        tmp->prev = dest->msgs->prev;
-        dest->msgs->prev->next = tmp;
-        dest->msgs->prev = tmp;
-    }
-    else {
-        tmp->next = tmp->prev = tmp;
-        dest->msgs = tmp;
-    }
+    
+    // Add the message to the user's list
+    addMessage(dest, dest->tempMsg.msg, 1);
 
     // Fill in the header
     hdr.destID = dest->uniqueID;
     memcpy(hdr.name, me->name, 20);
     hdr.srcID = me->id;
-    hdr.type = POSITION;
+    hdr.type = MESSAGE;
     
     // Fill in the message
-    memcpy(msg.msg, dest->tempMsg.msg, dest->tempMsg.msgLen);
+    memcpy(msg.msg, dest->tempMsg.msg, 250);
     
     // Send the data
-    XB_PutArray((uint8*)&hdr, sizeof(hdr));
-    XB_PutArray((uint8*)&msg, sizeof(msg));
+    XB_PutArray((uint8*)&hdr, sizeof(XBEE_Header));
+    XB_PutArray((uint8*)&msg, sizeof(XBEE_Message));
+    XB_PutArray((uint8*)"***", 3);
     
-    // Clear out and update the count
+    // Clear out the temp message
     dest->tempMsg.msgLen = 0;
-    ++dest->numMsgs;
+    dest->tempMsg.msg[0] = 0;
 }

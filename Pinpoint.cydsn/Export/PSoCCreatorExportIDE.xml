@@ -6,7 +6,7 @@
     <Toolchain Name="ARM GCC Generic" Selected="True">
       <Tool Name="prebuild" Command="" Options="" />
       <Tool Name="assembler" Command="arm-none-eabi-as.exe" Options="-mcpu=cortex-m3 -mthumb -I. -IGenerated_Source\PSoC5 -alh=${OutputDir}/${CompileFile}.lst -g -W" />
-      <Tool Name="compiler" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -Wno-main -I. -IGenerated_Source\PSoC5 -Wa,-alh=${OutputDir}/${CompileFile}.lst -g -D DEBUG -Wall -ffunction-sections -O3 -ffat-lto-objects -Wno-format-extra-args -Wno-unused-variable -Wno-format -Wno-strict-aliasing" />
+      <Tool Name="compiler" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -Wno-main -I. -IGenerated_Source\PSoC5 -Wa,-alh=${OutputDir}/${CompileFile}.lst -g -D DEBUG -Wall -ffunction-sections -O3 -ffat-lto-objects" />
       <Tool Name="linker" Command="arm-none-eabi-gcc.exe" Options="-mcpu=cortex-m3 -mthumb -g -ffunction-sections -O3 -ffat-lto-objects -L Generated_Source\PSoC5 -Wl,-Map,${OutputDir}/${ProjectShortName}.map -T Generated_Source\PSoC5\cm3gcc.ld -specs=nano.specs -u _printf_float -Wl,--gc-sections -u _scanf_float -lm" />
       <Tool Name="postbuild" Command="" Options="" />
     </Toolchain>
@@ -135,8 +135,6 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_Location_Broadcast.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_Location_Broadcast.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cycodeshareexport.ld</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_RX_ISR.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\XB_RX_ISR.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\TFT_PM.c</File>

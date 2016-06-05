@@ -7,6 +7,8 @@
 #include "nmea.h"
 #include "users.h"
 
+// Compiler flags -Wno-format-extra-args -Wno-unused-variable -Wno-format -Wno-strict-aliasing
+
 void logGPSdata();
 
 // GPS RX buffer variables
@@ -22,11 +24,10 @@ uint8 pcReady = 0;
 
 // XB RX buffer variables
 CY_ISR_PROTO(BRDCST_LOC);
-CY_ISR_PROTO(XBEE_RCV);
 uint8 broadcastReady = 0;
 uint16 xbBufLen = 0;
-uint8  xbBuffer[300];
-uint8  xbUpdate[300];
+uint8  xbBuffer[700];
+uint8  xbUpdate[700];
 uint8 xbReady = 0;
 
 // TFT display variables
@@ -37,7 +38,7 @@ uint8 refreshReady = 0;
 Self me;
 
 int main() {
-    uint16 x, y;
+    uint16 x, y, prevX, prevY;
     
     // Initializing GPS UART Module
     GPS_CLK_Start();
@@ -49,7 +50,6 @@ int main() {
     XB_TX_SetDriveMode(XB_TX_DM_STRONG); // To reduce initial glitch output
     Broadcast_Timer_Start();
     XB_Location_Broadcast_StartEx(BRDCST_LOC);
-    XB_RX_ISR_StartEx(XBEE_RCV);
     
     // Initializing PC UART Module
     PC_Start();
@@ -67,7 +67,7 @@ int main() {
     
     CyGlobalIntEnable;
     
-    Disp_FurtherInit(&me);
+    Disp_FurtherInit(&me, &prevX, &prevY);
     GPS_FurtherInit();
 
     Display_Refresh_Timer_ReadStatusRegister();
@@ -87,9 +87,8 @@ me.users->uniqueID = 42069;
             gpsReady = 0;
         }
         if (xbReady) {
-            PC_PutString("\tXBEE User\r\n");
+            //PC_PutString("\tXBEE User\r\n");
             logXBdata(&me, xbUpdate);
-            Disp_Refresh_Map();
             xbReady = 0;
         }
         if (refreshReady) {
@@ -103,12 +102,14 @@ me.users->uniqueID = 42069;
             broadcastPosition(&me);
             broadcastReady = 0;
         }
-        if (Disp_Get_Touch(&x, &y)) {
-            Adafruit_RA8875_graphicsMode();
-            Adafruit_RA8875_fillCircle(x, y, 5, RA8875_WHITE);
+        if (Disp_Get_Touch(&x, &y) && x != prevX && y != prevY) {
+            prevX = x;
+            prevY = y;
+            //Adafruit_RA8875_graphicsMode();
+            //Adafruit_RA8875_fillCircle(x, y, 5, RA8875_WHITE);
             Disp_touchResponse(x, y);
             CyDelay(250);
-            Disp_Get_Touch(&x, &y);
+            Disp_Get_Touch(&prevX, &prevY);
         }
     }
 }
@@ -174,41 +175,29 @@ void PC_RXISR_ExitCallback() {
     CyGlobalIntEnable;
 }
 
-CY_ISR(XBEE_RCV){
+void XB_RXISR_ExitCallback(){
     XBEE_Header *hdr = (XBEE_Header*) xbBuffer;
 
-    CyGlobalIntDisable;    
-
-    while(xbBufLen < sizeof(XBEE_Header)) {
-        if (XB_GetRxBufferSize()) {
+    CyGlobalIntDisable;
+    
+    while(XB_GetRxBufferSize()) {
+        if (xbBufLen > 2 && (xbBuffer[xbBufLen - 1] == '*' && 
+                             xbBuffer[xbBufLen - 2] == '*' &&
+                             xbBuffer[xbBufLen - 3] == '*')) {
+            if ((hdr->type == MESSAGE  && xbBufLen == sizeof(XBEE_Header) +  sizeof(XBEE_Message)  + 3) ||
+                (hdr->type == POSITION && xbBufLen == sizeof(XBEE_Header) +  sizeof(XBEE_Position) + 3)) {
+                // Transfering data to the second buffer
+                if (hdr->destID == 0 || hdr->destID == me.id) {
+                    xbReady = 1;
+                    memcpy(xbUpdate, xbBuffer, xbBufLen);
+                }
+            }
+            xbBufLen = 0;
+        }
+        else {
             xbBuffer[xbBufLen++] = XB_ReadRxData();
         }
-        else {
-            CyGlobalIntEnable;
-            return;
-        }
     }
-    
-    while(xbBufLen < sizeof(XBEE_Header) + XBEE_STR_SIZE[hdr->type]) {
-        if (XB_GetRxBufferSize()) {
-            if (hdr->destID == 0 || hdr->destID == me.id)
-                xbBuffer[xbBufLen++] = XB_ReadRxData();
-            else
-                XB_ReadRxData();
-        }
-        else {
-            CyGlobalIntEnable;
-            return;
-        }
-    }
-    
-    // Transfering data to the second buffer
-    if (hdr->destID == 0 || hdr->destID == me.id) {
-        xbReady = 1;
-        memcpy(xbUpdate, xbBuffer, xbBufLen);
-    }
-    xbBufLen = 0;
-
     CyGlobalIntEnable;
 }
 
