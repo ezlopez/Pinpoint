@@ -16,7 +16,8 @@ void logXBdata(Self *me, void *data) {
         // Update the position
         u->utc = pos->utc;
         u->pos = pos->pos;
-        Disp_Refresh_Map();
+        if (curMenu == MENU_HOME)
+           Disp_Refresh_Map();
     }
     else if (hdr->type == MESSAGE) {
         XBEE_Message *msg = (XBEE_Message*)(hdr + 1);
